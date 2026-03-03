@@ -1,0 +1,163 @@
+{
+  "projectType": "framework",
+  "projectName": "Tailor Platform App Shell",
+  "projectDescription": "An opinionated React framework for building ERP applications on Tailor Platform with built-in authentication, routing, and module federation.",
+  "theme": "palm",
+  "primaryColor": "#2563eb",
+  "lightColor": "#3b82f6",
+  "darkColor": "#1e40af",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/modules-and-resources",
+              "concepts/routing-navigation",
+              "concepts/authentication",
+              "concepts/styling-theming",
+              "concepts/file-based-routing"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/building-your-first-app",
+              "guides/custom-layouts",
+              "guides/guards-permissions",
+              "guides/internationalization"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Components",
+        "groups": [
+          {
+            "group": "Core Components",
+            "pages": [
+              "components/app-shell",
+              "components/sidebar-layout",
+              "components/command-palette"
+            ]
+          },
+          {
+            "group": "UI Components",
+            "pages": [
+              "components/badge",
+              "components/description-card",
+              "components/layout",
+              "components/with-guard"
+            ]
+          },
+          {
+            "group": "Sidebar Navigation",
+            "pages": [
+              "components/sidebar-item",
+              "components/sidebar-group"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Functions",
+            "pages": [
+              "api/define-module",
+              "api/define-resource",
+              "api/define-i18n-labels",
+              "api/create-typed-paths"
+            ]
+          },
+          {
+            "group": "Hooks",
+            "pages": [
+              "api/use-app-shell",
+              "api/use-auth",
+              "api/use-theme",
+              "api/use-toast",
+              "api/use-page-meta"
+            ]
+          },
+          {
+            "group": "Guards",
+            "pages": [
+              "api/guards/overview",
+              "api/guards/pass",
+              "api/guards/hidden",
+              "api/guards/redirect-to"
+            ]
+          },
+          {
+            "group": "Router Hooks",
+            "pages": [
+              "api/router/use-navigate",
+              "api/router/use-params",
+              "api/router/use-location"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/overview",
+              "development/monorepo-structure",
+              "development/testing",
+              "development/publishing"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Module-based application structure with automatic routing",
+    "Built-in authentication and authorization with OAuth 2.0",
+    "Responsive sidebar layouts with breadcrumb navigation",
+    "Guard system for route-level access control",
+    "Command palette for quick navigation",
+    "Tailwind CSS v4 theming support",
+    "TypeScript-first API with full type safety",
+    "React Router v7 integration"
+  ],
+  "publicApiSurface": [
+    "AppShell",
+    "defineModule",
+    "defineResource",
+    "SidebarLayout",
+    "DefaultSidebar",
+    "CommandPalette",
+    "useAppShell",
+    "useAuth",
+    "useTheme",
+    "AuthProvider",
+    "pass",
+    "hidden",
+    "redirectTo",
+    "Badge",
+    "DescriptionCard",
+    "Layout",
+    "WithGuard",
+    "SidebarItem",
+    "SidebarGroup",
+    "useToast",
+    "usePageMeta",
+    "createTypedPaths"
+  ]
+}
