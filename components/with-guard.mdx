@@ -1,0 +1,425 @@
+---
+title: WithGuard
+description: Conditionally render components based on route guard evaluation
+---
+
+The WithGuard component provides conditional rendering based on the same guard logic used in route definitions. Use it to control visibility of UI elements like sidebar items, buttons, or entire sections based on user permissions, feature flags, or other criteria.
+
+## Import
+
+```tsx
+import { WithGuard, pass, hidden } from "@tailor-platform/app-shell";
+```
+
+## Basic Usage
+
+```tsx
+import { WithGuard, pass, hidden } from "@tailor-platform/app-shell";
+
+const isAdmin = ({ context }) =>
+  context.currentUser?.role === "admin" ? pass() : hidden();
+
+<WithGuard guards={[isAdmin]}>
+  <AdminPanel />
+</WithGuard>
+```
+
+## Props
+
+<ParamField path="guards" type="Guard[]" required>
+  Array of guard functions to evaluate. All guards must return `pass()` for children to render.
+  
+  Guards are evaluated in order, and evaluation stops at the first non-pass result.
+  
+  See [Route Guards](/api/guards/overview) for guard function reference.
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  Content to render when all guards pass
+</ParamField>
+
+<ParamField path="fallback" type="React.ReactNode" default="null">
+  Content to render when any guard returns `hidden()`
+  
+  ```tsx
+  <WithGuard 
+    guards={[requirePremium]}
+    fallback={<UpgradePrompt />}
+  >
+    <PremiumFeature />
+  </WithGuard>
+  ```
+</ParamField>
+
+<ParamField path="loading" type="React.ReactNode" default="null">
+  Content to render while async guards are being evaluated
+  
+  ```tsx
+  <WithGuard 
+    guards={[checkSubscriptionStatus]}
+    loading={<Spinner />}
+  >
+    <SubscriptionContent />
+  </WithGuard>
+  ```
+</ParamField>
+
+## Guard Functions
+
+WithGuard uses the same guard types as route guards. See the [Route Guards](/api/guards/overview) documentation for complete details.
+
+### Guard Type
+
+```typescript
+type Guard = (context: GuardContext) => GuardResult | Promise<GuardResult>;
+
+type GuardContext = {
+  context: ContextData; // Custom context data from AppShell
+};
+
+type GuardResult = 
+  | { type: "pass" }      // Allow rendering
+  | { type: "hidden" };   // Deny rendering (show fallback)
+```
+
+**Note:** Unlike route guards, `redirectTo()` is not supported in WithGuard. Use `hidden()` with a fallback that handles navigation if needed.
+
+### Helper Functions
+
+```tsx
+import { pass, hidden } from "@tailor-platform/app-shell";
+
+// Allow rendering
+const allowAll = () => pass();
+
+// Deny rendering
+const denyAll = () => hidden();
+```
+
+## Common Use Cases
+
+### Role-Based Access Control
+
+```tsx
+import { WithGuard, pass, hidden } from "@tailor-platform/app-shell";
+
+const isAdmin = ({ context }) =>
+  context.currentUser?.role === "admin" ? pass() : hidden();
+
+const isManager = ({ context }) =>
+  context.currentUser?.role === "manager" ? pass() : hidden();
+
+// Admin-only button
+<WithGuard guards={[isAdmin]}>
+  <Button onClick={deleteAllData}>Delete All</Button>
+</WithGuard>
+
+// Manager or admin
+<WithGuard guards={[isManager]}>
+  <ExportButton />
+</WithGuard>
+```
+
+### Feature Flags
+
+```tsx
+const hasFeature = (featureName: string) => ({ context }) =>
+  context.featureFlags?.[featureName] ? pass() : hidden();
+
+<WithGuard guards={[hasFeature("newDashboard")]}>
+  <NewDashboard />
+</WithGuard>
+
+// With fallback to old version
+<WithGuard 
+  guards={[hasFeature("newDashboard")]}
+  fallback={<OldDashboard />}
+>
+  <NewDashboard />
+</WithGuard>
+```
+
+### Sidebar Navigation
+
+Control visibility of navigation items:
+
+```tsx
+import { DefaultSidebar, SidebarItem, WithGuard } from "@tailor-platform/app-shell";
+
+const isAdmin = ({ context }) =>
+  context.currentUser?.role === "admin" ? pass() : hidden();
+
+const CustomSidebar = () => (
+  <DefaultSidebar>
+    <SidebarItem to="/dashboard" />
+    <SidebarItem to="/orders" />
+    
+    {/* Admin-only navigation */}
+    <WithGuard guards={[isAdmin]}>
+      <SidebarItem to="/admin" />
+      <SidebarItem to="/settings" />
+    </WithGuard>
+  </DefaultSidebar>
+);
+```
+
+### Subscription-Based Access
+
+```tsx
+const hasPremium = ({ context }) =>
+  context.subscription?.tier === "premium" ? pass() : hidden();
+
+<WithGuard 
+  guards={[hasPremium]}
+  fallback={
+    <Card>
+      <CardHeader>
+        <CardTitle>Premium Feature</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Upgrade to access advanced analytics</p>
+        <Button>Upgrade Now</Button>
+      </CardContent>
+    </Card>
+  }
+>
+  <AdvancedAnalytics />
+</WithGuard>
+```
+
+### Multiple Guards
+
+All guards must pass for children to render:
+
+```tsx
+const isAuthenticated = ({ context }) =>
+  context.currentUser ? pass() : hidden();
+
+const hasPermission = (permission: string) => ({ context }) =>
+  context.currentUser?.permissions.includes(permission) ? pass() : hidden();
+
+const isActive = ({ context }) =>
+  context.currentUser?.status === "active" ? pass() : hidden();
+
+// Must be authenticated AND have permission AND be active
+<WithGuard guards={[isAuthenticated, hasPermission("delete"), isActive]}>
+  <DeleteButton />
+</WithGuard>
+```
+
+### Parameterized Guards
+
+Create reusable guard factories:
+
+```tsx
+const hasRole = (role: string) => ({ context }) =>
+  context.currentUser?.role === role ? pass() : hidden();
+
+const hasAnyRole = (...roles: string[]) => ({ context }) =>
+  roles.includes(context.currentUser?.role) ? pass() : hidden();
+
+const ownsResource = (resourceId: string) => ({ context }) =>
+  context.currentUser?.id === resourceId ? pass() : hidden();
+
+// Usage
+<WithGuard guards={[hasRole("admin")]}>
+  <AdminTools />
+</WithGuard>
+
+<WithGuard guards={[hasAnyRole("admin", "manager")]}>
+  <ManagementPanel />
+</WithGuard>
+
+const { id } = useParams();
+<WithGuard guards={[ownsResource(id)]}>
+  <EditButton />
+</WithGuard>
+```
+
+## Async Guards
+
+WithGuard supports async guards with Suspense integration:
+
+```tsx
+const checkSubscription = async ({ context }) => {
+  const subscription = await context.apiClient.getSubscription();
+  return subscription.active ? pass() : hidden();
+};
+
+<WithGuard 
+  guards={[checkSubscription]}
+  loading={<Spinner />}
+  fallback={<SubscriptionExpired />}
+>
+  <PremiumContent />
+</WithGuard>
+```
+
+**Note:** The guard result is cached based on `contextData` reference equality. Guards re-evaluate only when contextData changes.
+
+## Context Data Access
+
+Guards receive the context data passed to AppShell:
+
+```tsx
+// 1. Define context type
+declare module "@tailor-platform/app-shell" {
+  interface AppShellRegister {
+    contextData: {
+      currentUser: User | null;
+      apiClient: ApiClient;
+      featureFlags: Record<string, boolean>;
+    };
+  }
+}
+
+// 2. Pass context to AppShell
+<AppShell 
+  modules={modules}
+  contextData={{
+    currentUser,
+    apiClient,
+    featureFlags,
+  }}
+>
+  <SidebarLayout />
+</AppShell>
+
+// 3. Access in guards (fully typed)
+const myGuard = ({ context }) => {
+  // context.currentUser is typed
+  // context.apiClient is typed
+  // context.featureFlags is typed
+  return context.currentUser ? pass() : hidden();
+};
+```
+
+## Comparison with Route Guards
+
+| Feature | Route Guards | WithGuard |
+|---------|-------------|------------|
+| Purpose | Control route access | Control component visibility |
+| `pass()` | Allow route access | Render children |
+| `hidden()` | Show 404 page | Render fallback |
+| `redirectTo()` | Navigate to path | ❌ Not supported |
+| Async support | ✅ Yes | ✅ Yes with Suspense |
+| Context access | ✅ Full context | ✅ Full context |
+
+## Best Practices
+
+### 1. Reuse Route Guards
+
+Define guards once and use them in both routes and UI:
+
+```tsx
+// guards.ts
+export const isAdmin = ({ context }) =>
+  context.currentUser?.role === "admin" ? pass() : hidden();
+
+// In route definition
+const adminModule = defineModule({
+  path: "admin",
+  guards: [isAdmin],
+  // ...
+});
+
+// In component
+<WithGuard guards={[isAdmin]}>
+  <AdminPanel />
+</WithGuard>
+```
+
+### 2. Avoid Redirects in WithGuard
+
+Don't use `redirectTo()` in WithGuard guards. Handle navigation in the fallback:
+
+```tsx
+// ❌ Bad - redirectTo not supported
+<WithGuard guards={[() => redirectTo("/login")]}>
+  <Content />
+</WithGuard>
+
+// ✅ Good - navigate in fallback
+const LoginPrompt = () => {
+  const navigate = useNavigate();
+  return (
+    <Card>
+      <Button onClick={() => navigate("/login")}>Login</Button>
+    </Card>
+  );
+};
+
+<WithGuard guards={[isAuthenticated]} fallback={<LoginPrompt />}>
+  <Content />
+</WithGuard>
+```
+
+### 3. Provide Meaningful Fallbacks
+
+Show helpful messages instead of hiding content silently:
+
+```tsx
+// ❌ Less helpful
+<WithGuard guards={[hasPremium]}>
+  <AdvancedFeature />
+</WithGuard>
+
+// ✅ Better UX
+<WithGuard 
+  guards={[hasPremium]}
+  fallback={
+    <div className="text-muted-foreground">
+      This feature requires a premium subscription.
+    </div>
+  }
+>
+  <AdvancedFeature />
+</WithGuard>
+```
+
+### 4. Handle Loading States
+
+Provide loading indicators for async guards:
+
+```tsx
+<WithGuard 
+  guards={[checkPermissions]}
+  loading={<Skeleton className="h-20" />}
+>
+  <ProtectedContent />
+</WithGuard>
+```
+
+### 5. Combine with Error Boundaries
+
+Wrap WithGuard in error boundaries for async guard failures:
+
+```tsx
+<ErrorBoundary fallback={<ErrorMessage />}>
+  <WithGuard guards={[asyncGuard]}>
+    <Content />
+  </WithGuard>
+</ErrorBoundary>
+```
+
+## TypeScript
+
+```tsx
+import { type Guard, type GuardContext, pass, hidden } from "@tailor-platform/app-shell";
+
+// Type-safe guard
+const myGuard: Guard = ({ context }) => {
+  return context.currentUser ? pass() : hidden();
+};
+
+// Guard factory with types
+const hasPermission = (permission: string): Guard => ({ context }) => {
+  return context.permissions?.includes(permission) ? pass() : hidden();
+};
+```
+
+## Related
+
+- [Route Guards](/api/guards/overview) - Full guard function reference
+- [AppShell](/components/app-shell) - Defining context data types
+- [Guards & Permissions](/guides/guards-permissions) - Using guards in navigation

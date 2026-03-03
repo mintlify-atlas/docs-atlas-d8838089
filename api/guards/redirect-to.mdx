@@ -1,0 +1,299 @@
+---
+title: redirectTo
+description: Redirect users to another path when accessing a route
+---
+
+`redirectTo()` is a helper function that returns a guard result indicating the user should be redirected to a different path.
+
+## Type Signature
+
+```typescript
+const redirectTo: (to: string) => GuardResult;
+
+type GuardResult = {
+  type: "redirect";
+  to: string;
+};
+```
+
+## Parameters
+
+<ParamField path="to" type="string" required>
+  The path to redirect to. Can be absolute (e.g., `/login`) or relative (e.g., `settings/general`).
+</ParamField>
+
+## Behavior
+
+When a guard returns `redirectTo(path)`:
+- **Client-side redirect**: The user is navigated to the specified path
+- **Guard chain stops**: Subsequent guards are not evaluated
+- **No component render**: The original route component does not render
+- **Navigation history**: The redirect is added to browser history
+
+## Basic Usage
+
+```tsx
+import { redirectTo } from "@tailor-platform/app-shell";
+
+const redirectToLogin: Guard = () => {
+  return redirectTo("/login");
+};
+```
+
+## Authentication Redirect
+
+Most common use case - redirect unauthenticated users to login:
+
+```tsx
+import { pass, redirectTo } from "@tailor-platform/app-shell";
+
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");  // Not authenticated → login
+  }
+  return pass();  // Authenticated → allow access
+};
+
+defineModule({
+  path: "dashboard",
+  component: Dashboard,
+  resources: [dashboardResources],
+  guards: [requireAuth]
+});
+```
+
+## Module Without Component
+
+Use `redirectTo()` to create modules that automatically redirect to a specific resource:
+
+```tsx
+import { redirectTo } from "@tailor-platform/app-shell";
+
+const settingsModule = defineModule({
+  path: "settings",
+  // No component - redirect to first resource
+  resources: [
+    defineResource({
+      path: "general",
+      component: GeneralSettings
+    }),
+    defineResource({
+      path: "security",
+      component: SecuritySettings
+    })
+  ],
+  guards: [
+    () => redirectTo("/settings/general")  // Always redirect to general
+  ]
+});
+```
+
+## Common Use Cases
+
+### Onboarding Flow
+
+Redirect users who haven't completed onboarding:
+
+```tsx
+import { type Guard, pass, redirectTo } from "@tailor-platform/app-shell";
+
+const requireOnboarding: Guard = ({ context }) => {
+  if (!context.currentUser?.onboardingComplete) {
+    return redirectTo("/onboarding");
+  }
+  return pass();
+};
+
+defineModule({
+  path: "dashboard",
+  component: Dashboard,
+  resources: [dashboardResources],
+  guards: [requireOnboarding]
+});
+```
+
+### Role-Based Redirect
+
+Redirect users based on their role:
+
+```tsx
+import { type Guard, redirectTo } from "@tailor-platform/app-shell";
+
+const redirectByRole: Guard = ({ context }) => {
+  const role = context.currentUser?.role;
+  
+  if (role === "admin") {
+    return redirectTo("/admin/dashboard");
+  }
+  if (role === "manager") {
+    return redirectTo("/manager/dashboard");
+  }
+  return redirectTo("/employee/dashboard");
+};
+
+defineModule({
+  path: "home",
+  resources: [],
+  guards: [redirectByRole]
+});
+```
+
+### Subscription Check
+
+Redirect users without active subscription:
+
+```tsx
+import { type Guard, pass, redirectTo } from "@tailor-platform/app-shell";
+
+const requireSubscription: Guard = ({ context }) => {
+  if (!context.currentUser?.hasActiveSubscription) {
+    return redirectTo("/billing/subscribe");
+  }
+  return pass();
+};
+
+defineResource({
+  path: "premium-features",
+  component: PremiumFeatures,
+  guards: [requireSubscription]
+});
+```
+
+### Default Route Redirect
+
+Create a root path that redirects to a default location:
+
+```tsx
+import { redirectTo } from "@tailor-platform/app-shell";
+
+const rootModule = defineModule({
+  path: "/",
+  resources: [],
+  guards: [
+    () => redirectTo("/dashboard")  // Redirect root to dashboard
+  ]
+});
+```
+
+### Async Redirect (Feature Flag)
+
+```tsx
+import { type Guard, pass, redirectTo } from "@tailor-platform/app-shell";
+
+const checkBetaAccess: Guard = async ({ context }) => {
+  const hasAccess = await context.apiClient.checkFeatureFlag("beta-access");
+  
+  if (!hasAccess) {
+    return redirectTo("/coming-soon");
+  }
+  return pass();
+};
+
+defineModule({
+  path: "beta",
+  component: BetaFeatures,
+  resources: [betaResources],
+  guards: [checkBetaAccess]
+});
+```
+
+## When to Use `redirectTo()` vs `hidden()`
+
+### Use `redirectTo()` when:
+- User needs authentication (redirect to login)
+- User needs to complete a required step (onboarding, subscription)
+- You want to guide users to the correct page based on state
+- The route exists but is not yet accessible (redirect to "coming soon")
+
+### Use `hidden()` when:
+- The route should appear to not exist for unauthorized users
+- Access is based on roles, permissions, or feature flags
+- You want to prevent route discovery
+- The user should not know the feature exists
+
+## Example: Combined Guards
+
+```tsx
+import { type Guard, pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");  // Redirect if not authenticated
+  }
+  return pass();
+};
+
+const requireAdmin: Guard = ({ context }) => {
+  if (context.currentUser?.role !== "admin") {
+    return hidden();  // Hide if authenticated but not admin
+  }
+  return pass();
+};
+
+defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [adminResources],
+  guards: [
+    requireAuth,   // First: redirect to login if needed
+    requireAdmin   // Then: hide if not admin
+  ]
+});
+```
+
+## Absolute vs Relative Paths
+
+### Absolute Paths (Recommended)
+
+Start with `/` to navigate from the app root:
+
+```tsx
+redirectTo("/login");           // → /login
+redirectTo("/dashboard/home");  // → /dashboard/home
+```
+
+### Relative Paths
+
+Relative to the current basePath:
+
+```tsx
+// If basePath is "app"
+redirectTo("settings/general");  // → /app/settings/general
+```
+
+## Return Value
+
+`redirectTo(path)` returns a `GuardResult` object:
+
+```typescript
+{
+  type: "redirect",
+  to: "/login"  // The path you provided
+}
+```
+
+This object is processed by AppShell's routing system to perform a client-side redirect.
+
+## Redirect with State (Advanced)
+
+For advanced redirect scenarios, you can use React Router's redirect function directly:
+
+```tsx
+import { redirect } from "react-router";
+import { type Guard } from "@tailor-platform/app-shell";
+
+const requireAuthWithReturn: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    // Store current path to return after login
+    const returnTo = window.location.pathname;
+    return redirectTo(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+  }
+  return pass();
+};
+```
+
+## See Also
+
+- [Guards Overview](/api/guards/overview) - Understanding guards
+- [pass()](/api/guards/pass) - Allow access to routes
+- [hidden()](/api/guards/hidden) - Deny access and show 404

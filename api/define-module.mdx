@@ -1,0 +1,217 @@
+---
+title: defineModule
+description: Define a top-level module that appears in the main navigation
+---
+
+Creates a top-level module that appears in the main navigation. Modules contain resources and can optionally have their own landing page.
+
+## Signature
+
+```typescript
+function defineModule(props: DefineModuleProps): Module
+```
+
+## Parameters
+
+<ParamField path="path" type="string" required>
+  URL path for the module.
+</ParamField>
+
+<ParamField path="component" type="(props: ResourceComponentProps) => ReactNode">
+  Landing page component. Optional - if omitted, module redirects to first resource.
+  
+  Receives `ResourceComponentProps`:
+  - `title: string` - Title of the resource
+  - `icon?: ReactNode` - Optional icon
+  - `resources?: Resource[]` - Optional sub-resources
+</ParamField>
+
+<ParamField path="resources" type="Resource[]" required>
+  Array of resources within this module. Define using `defineResource()`.
+</ParamField>
+
+<ParamField path="meta" type="object">
+  Metadata configuration for the module.
+  
+  <ParamField path="meta.title" type="string | LocalizedString">
+    Display title in navigation. Defaults to path in capital case.
+  </ParamField>
+  
+  <ParamField path="meta.icon" type="ReactNode">
+    Icon displayed in navigation.
+  </ParamField>
+  
+  <ParamField path="meta.breadcrumbTitle" type="string | ((segment: string) => string)">
+    Custom breadcrumb segment title for this page.
+  </ParamField>
+</ParamField>
+
+<ParamField path="guards" type="Guard[]">
+  Array of guard functions to control access. Guards are executed in order. If any guard returns non-pass result, access is denied.
+  
+  See [Route Guards](/api/guards/overview) for details.
+</ParamField>
+
+<ParamField path="errorBoundary" type="ReactNode">
+  Error boundary component for this module and its child resources. When an error occurs in this module or its resources, this component will render.
+  
+  Use the `useRouteError` hook to access error details within the component.
+</ParamField>
+
+## Return Type
+
+<ResponseField name="Module" type="Module">
+  A module object that can be passed to the `modules` prop of `AppShell`.
+</ResponseField>
+
+## Examples
+
+### Basic Module with Component
+
+```tsx
+import { defineModule, defineResource } from "@tailor-platform/app-shell";
+import { Package } from "lucide-react";
+
+const productModule = defineModule({
+  path: "products",
+  meta: {
+    title: "Product Management",
+    icon: <Package />,
+  },
+  component: ({ title, resources }) => (
+    <div>
+      <h1>{title} Dashboard</h1>
+      <p>Total resources: {resources?.length || 0}</p>
+    </div>
+  ),
+  resources: [inventoryPage, categoriesPage],
+});
+```
+
+### Module Without Component (Auto-redirect)
+
+```tsx
+import { defineModule, defineResource } from "@tailor-platform/app-shell";
+import { BarChart } from "lucide-react";
+
+// Automatically redirects to /reports/sales
+const reportsModule = defineModule({
+  path: "reports",
+  meta: {
+    title: "Reports",
+    icon: <BarChart />,
+  },
+  resources: [
+    defineResource({
+      path: "sales",
+      component: () => <SalesReport />
+    }),
+    defineResource({
+      path: "users",
+      component: () => <UserReport />
+    })
+  ]
+});
+```
+
+### Module with Guards
+
+```tsx
+import { defineModule, pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+const adminModule = defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [adminResources],
+  guards: [
+    ({ context }) => {
+      if (!context.currentUser) {
+        return redirectTo("/login");
+      }
+      if (context.currentUser.role !== "admin") {
+        return hidden(); // Shows 404
+      }
+      return pass();
+    }
+  ]
+});
+```
+
+### Module with Redirect Guard
+
+```tsx
+import { defineModule, defineResource, redirectTo } from "@tailor-platform/app-shell";
+
+const settingsModule = defineModule({
+  path: "settings",
+  resources: [
+    defineResource({
+      path: "general",
+      component: () => <GeneralSettings />
+    })
+  ],
+  guards: [() => redirectTo("settings/general")]
+});
+```
+
+### Module with Custom Error Boundary
+
+```tsx
+import { defineModule, useRouteError } from "@tailor-platform/app-shell";
+
+const CustomErrorBoundary = () => {
+  const error = useRouteError() as Error;
+  return (
+    <div>
+      <h1>Module Error</h1>
+      <p>{error.message}</p>
+    </div>
+  );
+};
+
+const dashboardModule = defineModule({
+  path: "dashboard",
+  component: DashboardPage,
+  resources: [overviewResource],
+  errorBoundary: <CustomErrorBoundary />,
+});
+```
+
+### Module with Internationalization
+
+```tsx
+import { defineModule, defineI18nLabels } from "@tailor-platform/app-shell";
+
+const labels = defineI18nLabels({
+  en: {
+    productTitle: "Product Management",
+  },
+  ja: {
+    productTitle: "製品管理",
+  },
+});
+
+const productModule = defineModule({
+  path: "products",
+  meta: {
+    title: labels.t("productTitle"),
+    icon: <Package />,
+  },
+  component: ProductDashboard,
+  resources: [productListResource],
+});
+```
+
+## Notes
+
+- If a module has no `component` and no `guards`, an error will be thrown
+- Modules without a component must use `guards` with `redirectTo()` or `hidden()` to control access
+- A guard that only returns `pass()` without a component will result in a blank page
+- Guards are executed in the loader phase before the component renders
+- Child resources inherit the module's error boundary unless they define their own
+
+## Related
+
+- [defineResource](/api/define-resource) - Define resources within modules
+- [Route Guards](/api/guards/overview) - Control access to routes
+- [defineI18nLabels](/api/define-i18n-labels) - Internationalization for titles

@@ -1,0 +1,188 @@
+---
+title: Monorepo Structure
+description: Understanding the AppShell monorepo architecture, packages, and build system
+---
+
+AppShell uses a monorepo architecture managed by pnpm workspaces and Turborepo to organize code efficiently.
+
+## Repository Layout
+
+```
+app-shell/
+├── packages/              # Publishable packages
+│   ├── core/              # Main AppShell library
+│   └── vite-plugin/       # Vite integration plugin
+├── examples/              # Example implementations
+│   ├── nextjs-app/        # Next.js example
+│   ├── vite-app/          # Vite example  
+│   └── app-module/        # Module example
+├── .changeset/            # Version management
+├── package.json           # Root workspace config
+└── turbo.json             # Build orchestration
+```
+
+## Packages
+
+### packages/core
+
+The main `@tailor-platform/app-shell` library published to npm.
+
+**Key Details:**
+- **Package Name**: `@tailor-platform/app-shell`
+- **Current Version**: 0.27.1
+- **Build Tool**: Vite (with vite-plugin-dts for type generation)
+- **Test Framework**: Vitest with happy-dom
+- **Exports**:
+  - `@tailor-platform/app-shell` - Main library exports
+  - `@tailor-platform/app-shell/styles` - Component styles
+  - `@tailor-platform/app-shell/theme.css` - Tailwind theme
+  - `@tailor-platform/app-shell/vite-plugin` - Vite plugin
+
+**Core Package Structure:**
+
+```
+packages/core/src/
+├── components/          # React components
+│   ├── appshell.tsx    # Main AppShell component
+│   └── ui/             # UI primitives
+├── contexts/           # Context providers
+├── routing/            # React Router integration
+├── hooks/              # Custom hooks
+├── lib/                # Utilities (cn, i18n)
+├── assets/             # CSS themes
+├── index.ts            # Public API exports
+└── resource.tsx        # Module/Resource types
+```
+
+**Development:**
+```bash
+cd packages/core
+pnpm dev      # Watch mode for development
+pnpm build    # Production build
+pnpm test     # Run tests with Vitest
+```
+
+### packages/vite-plugin
+
+Vite plugin for AppShell integration.
+
+**Package Name**: `@tailor-platform/app-shell-vite-plugin`
+
+## Examples
+
+The `examples/` directory contains reference implementations showing how to use AppShell in different environments.
+
+### examples/nextjs-app
+
+Next.js App Router implementation demonstrating:
+- Server-side rendering with AppShell
+- Next.js routing integration
+- Production deployment setup
+
+### examples/vite-app
+
+Vite + React implementation showing:
+- Client-side rendering
+- Fast development with HMR
+- Lightweight build setup
+
+### examples/app-module
+
+Demonstrates creating reusable modules with:
+- Module and resource definitions
+- Custom page components
+- Module federation patterns
+
+**Running Examples:**
+```bash
+# Run all examples in dev mode
+pnpm dev
+
+# Or run a specific example
+cd examples/nextjs-app && pnpm dev
+cd examples/vite-app && pnpm dev
+```
+
+## Build System
+
+### Turborepo Configuration
+
+The `turbo.json` file orchestrates builds across the monorepo:
+
+```json
+{
+  "tasks": {
+    "build": {
+      "outputs": ["dist/**"],
+      "dependsOn": ["^build"]
+    },
+    "dev": {
+      "persistent": true,
+      "cache": false,
+      "dependsOn": ["^build"]
+    },
+    "type-check": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    }
+  }
+}
+```
+
+**Key Features:**
+- **Dependency-aware builds**: `^build` ensures dependencies build first
+- **Caching**: Build outputs are cached (except `dev` mode)
+- **Parallel execution**: Independent tasks run in parallel
+
+### Workspace Dependencies
+
+Packages can reference each other using workspace protocol:
+
+```json
+{
+  "dependencies": {
+    "@tailor-platform/app-shell-vite-plugin": "workspace:*"
+  }
+}
+```
+
+This ensures the local version is always used during development.
+
+## Technology Stack
+
+### Core Library
+- **React 19**: UI framework
+- **React Router v7**: Client-side routing
+- **Tailwind CSS v4**: Styling with container queries
+- **shadcn/ui**: Component primitives via @base-ui/react
+- **TypeScript 5**: Type safety
+
+### Build Tools
+- **Vite**: Fast development and production builds
+- **Vitest**: Unit testing framework
+- **pnpm**: Fast, efficient package manager
+- **Turborepo**: Monorepo task orchestration
+
+### Testing
+- **Vitest**: Test runner with happy-dom environment
+- **@testing-library/react**: Component testing utilities
+
+See [Testing](/development/testing) for details on the test setup.
+
+## Dependency Management
+
+The root `package.json` manages shared devDependencies:
+
+```json
+{
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "turbo": "^2.8.10"
+  },
+  "packageManager": "pnpm@10.24.0"
+}
+```
+
+Individual packages manage their own dependencies in their `package.json` files.

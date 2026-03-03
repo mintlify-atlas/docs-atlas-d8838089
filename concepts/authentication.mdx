@@ -1,0 +1,290 @@
+---
+title: Authentication
+description: Integrate OAuth2/OIDC authentication with Tailor Platform's Auth service
+---
+
+AppShell provides built-in OAuth2/OIDC authentication through the `AuthProvider` component, which integrates seamlessly with Tailor Platform's Auth service. The provider supports any IdP configured in your Tailor Platform application (built-in IdP, Google, Okta, Auth0, etc.).
+
+## Quick start
+
+Wrap your AppShell with the authentication provider:
+
+```tsx
+import { createAuthClient, AuthProvider, AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+// Create auth client outside component
+const authClient = createAuthClient({
+  clientId: "your-client-id",
+  appUri: "https://xyz.erp.dev",
+  redirectUri: window.location.origin, // Optional, defaults to origin
+});
+
+const App = () => (
+  <AuthProvider
+    client={authClient}
+    autoLogin={true}
+    guardComponent={() => <LoadingScreen />}
+  >
+    <AppShell modules={modules}>
+      <SidebarLayout />
+    </AppShell>
+  </AuthProvider>
+);
+```
+
+## Configuration values
+
+Find these values in your Tailor Platform console:
+
+### App URI
+
+Your application's base URL obtained from the Application Overview screen.
+
+- Found in: Application Overview > "Accessing the API endpoint of this application"
+- Use the domain portion only (no `/query` suffix)
+- Example: `"https://xyz.erp.dev"`
+
+### Client ID
+
+Authentication client identifier.
+
+- Found in: Application > Auth screen
+- Example: `"my-app-client"`
+
+### Redirect URI (optional)
+
+OAuth2 callback URL after authentication.
+
+- Defaults to `window.location.origin` if not provided
+- Must match the redirect URI configured in Tailor Platform Auth settings
+- Example: `"https://myapp.com"`
+
+## Provider behavior
+
+With the above configuration:
+
+- **Auto-login**: Unauthenticated users automatically redirect to login (when `autoLogin={true}`)
+- **Guard component**: Shows loading/unauthenticated state while checking auth status
+- **Token management**: Handles token storage, refresh, and session persistence automatically
+- **OAuth callback**: Processes OAuth redirects and cleans up URL parameters
+
+## Authentication hook
+
+Use the `useAuth` hook to access authentication state and methods:
+
+```tsx
+import { useAuth } from "@tailor-platform/app-shell";
+
+const UserProfile = () => {
+  const { isAuthenticated, isReady, error, login, logout } = useAuth();
+  
+  if (!isReady) {
+    return <div>Loading...</div>;
+  }
+  
+  if (!isAuthenticated) {
+    return <button onClick={login}>Sign In</button>;
+  }
+  
+  return (
+    <div>
+      <p>Welcome back!</p>
+      <button onClick={logout}>Sign Out</button>
+    </div>
+  );
+};
+```
+
+### Authentication state
+
+The `useAuth` hook returns:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isReady` | `boolean` | Whether initial auth check has completed |
+| `isAuthenticated` | `boolean` | Whether user is authenticated |
+| `error` | `string \| null` | Error message if authentication failed |
+| `login` | `() => Promise<void>` | Initiates login flow |
+| `logout` | `() => Promise<void>` | Logs out current user |
+| `checkAuthStatus` | `() => Promise<AuthState>` | Manually check auth status |
+
+<Warning>
+`checkAuthStatus()` always makes a network request and attempts token refresh. Use sparingly.
+</Warning>
+
+## Suspense integration
+
+For React Suspense compatibility, use `useAuthSuspense`:
+
+```tsx
+import { Suspense } from 'react';
+import { createAuthClient, AuthProvider, useAuthSuspense } from '@tailor-platform/app-shell';
+
+const authClient = createAuthClient({
+  clientId: 'your-client-id',
+  appUri: 'https://xyz.erp.dev',
+});
+
+function App() {
+  return (
+    <AuthProvider client={authClient}>
+      <Suspense fallback={<div>Loading authentication...</div>}>
+        <ProtectedContent />
+      </Suspense>
+    </AuthProvider>
+  );
+}
+
+function ProtectedContent() {
+  const { isAuthenticated, login, logout } = useAuthSuspense();
+
+  // isReady is guaranteed to be true here (Suspense handles loading)
+
+  if (!isAuthenticated) {
+    return <button onClick={login}>Log In</button>;
+  }
+
+  return (
+    <div>
+      <p>Welcome!</p>
+      <button onClick={logout}>Log Out</button>
+    </div>
+  );
+}
+```
+
+<Info>
+`useAuthSuspense` throws a promise during the initial auth check, allowing Suspense boundaries to handle loading states.
+</Info>
+
+## GraphQL integration
+
+The auth client provides a helper method for authenticated GraphQL requests:
+
+```tsx
+import { createAuthClient } from '@tailor-platform/app-shell';
+import { createClient, Provider } from 'urql';
+
+const authClient = createAuthClient({
+  clientId: 'your-client-id',
+  appUri: 'https://xyz.erp.dev',
+});
+
+// Create urql client with automatic auth headers
+const urqlClient = createClient({
+  url: `${authClient.getAppUri()}/query`,
+  fetchOptions: async () => {
+    const headers = await authClient.getAuthHeadersForQuery();
+    return { headers };
+  },
+});
+
+function App() {
+  return (
+    <AuthProvider client={authClient}>
+      <Provider value={urqlClient}>
+        <YourAppComponents />
+      </Provider>
+    </AuthProvider>
+  );
+}
+```
+
+### Custom endpoints
+
+The `getAuthHeadersForQuery` method accepts custom paths:
+
+```tsx
+// Default: /query endpoint
+const headers = await authClient.getAuthHeadersForQuery();
+
+// Custom path
+const headers = await authClient.getAuthHeadersForQuery("/api/v2/query", "POST");
+```
+
+## OAuth callback handling
+
+<Info>
+In most cases, the `AuthProvider` handles OAuth callbacks automatically. Use `handleCallback` only if you need a dedicated callback page.
+</Info>
+
+For custom callback flows:
+
+```tsx
+import { useAuth } from "@tailor-platform/app-shell";
+import { useEffect } from "react";
+
+const CallbackPage = () => {
+  const { handleCallback } = useAuth();
+  
+  useEffect(() => {
+    handleCallback()
+      .then(() => {
+        // Redirect to intended page
+        window.location.href = "/";
+      })
+      .catch((error) => {
+        console.error("Auth callback failed:", error);
+      });
+  }, [handleCallback]);
+  
+  return <div>Processing authentication...</div>;
+};
+```
+
+## Integration with AppShell
+
+The authentication provider works seamlessly with AppShell's data layer:
+
+<Steps>
+  <Step title="OAuth2 token management">
+    Automatically handles token storage and refresh
+  </Step>
+  <Step title="GraphQL authentication">
+    Provides DPoP-bound tokens for secure API requests
+  </Step>
+  <Step title="Session persistence">
+    Maintains sessions across page reloads
+  </Step>
+  <Step title="Route protection">
+    Works with route guards for protected routes
+  </Step>
+</Steps>
+
+## Example: Protected routes
+
+Combine authentication with route guards:
+
+```tsx
+import { defineModule, type Guard, pass, redirectTo } from "@tailor-platform/app-shell";
+import { useAuth } from "@tailor-platform/app-shell";
+
+// Define reusable auth guard
+const requireAuth: Guard = ({ context }) => {
+  // Access current user from context
+  if (!context.currentUser) {
+    return redirectTo("/login");
+  }
+  return pass();
+};
+
+// Apply to module
+defineModule({
+  path: "dashboard",
+  component: DashboardPage,
+  meta: { title: "Dashboard" },
+  resources: [...],
+  guards: [requireAuth],
+})
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Modules and resources" icon="sitemap" href="/concepts/modules-and-resources">
+    Learn about route guards for access control
+  </Card>
+  <Card title="API reference" icon="code" href="/api/use-auth">
+    Complete authentication hook API documentation
+  </Card>
+</CardGroup>

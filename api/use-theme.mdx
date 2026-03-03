@@ -1,0 +1,248 @@
+---
+title: useTheme
+description: Hook for managing application theme (light/dark/system)
+---
+
+React hook to access and control the application theme. Supports light, dark, and system-based theme preferences with localStorage persistence.
+
+## Signature
+
+```typescript
+const useTheme: () => {
+  theme: Theme;
+  resolvedTheme: "dark" | "light";
+  setTheme: (theme: Theme) => void;
+}
+
+type Theme = "dark" | "light" | "system";
+```
+
+## Returns
+
+<ResponseField name="theme" type="'dark' | 'light' | 'system'">
+  Current theme setting. Can be "dark", "light", or "system" (auto-detect from OS preferences)
+</ResponseField>
+
+<ResponseField name="resolvedTheme" type="'dark' | 'light'">
+  Actual theme after system resolution. When theme is "system", this reflects the detected OS preference ("dark" or "light")
+</ResponseField>
+
+<ResponseField name="setTheme" type="(theme: Theme) => void">
+  Function to update the theme. Accepts "dark", "light", or "system". Automatically persists to localStorage.
+</ResponseField>
+
+## Usage
+
+### Basic Theme Toggle
+
+```tsx
+import { useTheme } from "@tailor-platform/app-shell";
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+      {theme === "dark" ? "🌙 Dark" : "☀️ Light"}
+    </button>
+  );
+}
+```
+
+### Theme Selector with System Option
+
+```tsx
+import { useTheme } from "@tailor-platform/app-shell";
+
+function ThemeSelector() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <div>
+      <h3>Theme Preference</h3>
+      <select 
+        value={theme} 
+        onChange={(e) => setTheme(e.target.value as "dark" | "light" | "system")}
+      >
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+        <option value="system">System</option>
+      </select>
+    </div>
+  );
+}
+```
+
+### Using Resolved Theme
+
+```tsx
+import { useTheme } from "@tailor-platform/app-shell";
+
+function ThemedIcon() {
+  const { resolvedTheme } = useTheme();
+
+  // resolvedTheme is always "dark" or "light", never "system"
+  return resolvedTheme === "dark" ? <MoonIcon /> : <SunIcon />;
+}
+```
+
+### Complete Theme Menu
+
+```tsx
+import { useTheme } from "@tailor-platform/app-shell";
+import { Monitor, Moon, Sun } from "lucide-react";
+
+function ThemeMenu() {
+  const { theme, resolvedTheme, setTheme } = useTheme();
+
+  const themes = [
+    { value: "light", label: "Light", icon: <Sun /> },
+    { value: "dark", label: "Dark", icon: <Moon /> },
+    { value: "system", label: "System", icon: <Monitor /> },
+  ] as const;
+
+  return (
+    <div>
+      <p>Current setting: {theme}</p>
+      <p>Active theme: {resolvedTheme}</p>
+      
+      <div>
+        {themes.map(({ value, label, icon }) => (
+          <button
+            key={value}
+            onClick={() => setTheme(value)}
+            className={theme === value ? "active" : ""}
+          >
+            {icon}
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+## How It Works
+
+### Theme Resolution
+
+When theme is set to "system", the hook uses `window.matchMedia("(prefers-color-scheme: dark)")` to detect the OS preference:
+
+```tsx
+const resolvedTheme = useMemo(() => {
+  if (theme !== "system") return theme;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}, [theme]);
+```
+
+### DOM Updates
+
+The hook automatically applies the resolved theme to the document root:
+
+```tsx
+useEffect(() => {
+  const root = window.document.documentElement;
+  root.classList.remove("light", "dark");
+  root.classList.add(resolvedTheme);
+}, [resolvedTheme]);
+```
+
+### localStorage Persistence
+
+Theme preference is automatically saved to localStorage when changed:
+
+```tsx
+const handleSetTheme = (newTheme: Theme) => {
+  localStorage.setItem(storageKey, newTheme);
+  setTheme(newTheme);
+};
+```
+
+## Prerequisites
+
+This hook must be used within a `ThemeProvider` component. The provider is typically included automatically when using AppShell's `SidebarLayout`:
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+function App() {
+  return (
+    <AppShell modules={modules}>
+      <SidebarLayout />
+    </AppShell>
+  );
+}
+```
+
+<Warning>
+  If you use `useTheme` outside of a `ThemeProvider`, it will throw an error: "useTheme must be used within a ThemeProvider"
+</Warning>
+
+## Best Practices
+
+1. **Respect User Preference**: Default to "system" theme to respect OS-level preferences
+2. **Provide All Options**: Offer light, dark, and system options for maximum flexibility
+3. **Visual Feedback**: Show the current theme setting clearly in your UI
+4. **Accessibility**: Ensure both themes have sufficient contrast and are accessible
+
+## Example: Settings Page
+
+```tsx
+import { useTheme } from "@tailor-platform/app-shell";
+
+function SettingsPage() {
+  const { theme, resolvedTheme, setTheme } = useTheme();
+
+  return (
+    <div>
+      <h1>Settings</h1>
+      
+      <section>
+        <h2>Appearance</h2>
+        
+        <div>
+          <label>
+            <input
+              type="radio"
+              value="light"
+              checked={theme === "light"}
+              onChange={(e) => setTheme(e.target.value as Theme)}
+            />
+            Light Theme
+          </label>
+        </div>
+        
+        <div>
+          <label>
+            <input
+              type="radio"
+              value="dark"
+              checked={theme === "dark"}
+              onChange={(e) => setTheme(e.target.value as Theme)}
+            />
+            Dark Theme
+          </label>
+        </div>
+        
+        <div>
+          <label>
+            <input
+              type="radio"
+              value="system"
+              checked={theme === "system"}
+              onChange={(e) => setTheme(e.target.value as Theme)}
+            />
+            System Default
+            {theme === "system" && (
+              <span> (currently {resolvedTheme})</span>
+            )}
+          </label>
+        </div>
+      </section>
+    </div>
+  );
+}
+```

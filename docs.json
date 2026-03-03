@@ -1,122 +1,141 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Tailor Platform App Shell",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#2563eb",
+    "light": "#3b82f6",
+    "dark": "#1e40af"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/tailor-platform/app-shell"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/tailor-platform/app-shell"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/modules-and-resources",
+              "concepts/routing-navigation",
+              "concepts/authentication",
+              "concepts/styling-theming",
+              "concepts/file-based-routing"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/building-your-first-app",
+              "guides/custom-layouts",
+              "guides/guards-permissions",
+              "guides/internationalization"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Components",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core Components",
             "pages": [
-              "api-reference/introduction"
+              "components/app-shell",
+              "components/sidebar-layout",
+              "components/command-palette"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "UI Components",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "components/badge",
+              "components/description-card",
+              "components/layout",
+              "components/with-guard"
+            ]
+          },
+          {
+            "group": "Sidebar Navigation",
+            "pages": [
+              "components/sidebar-item",
+              "components/sidebar-group"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Functions",
+            "pages": [
+              "api/define-module",
+              "api/define-resource",
+              "api/define-i18n-labels",
+              "api/create-typed-paths"
+            ]
+          },
+          {
+            "group": "Hooks",
+            "pages": [
+              "api/use-app-shell",
+              "api/use-auth",
+              "api/use-theme",
+              "api/use-toast",
+              "api/use-page-meta"
+            ]
+          },
+          {
+            "group": "Guards",
+            "pages": [
+              "api/guards/overview",
+              "api/guards/pass",
+              "api/guards/hidden",
+              "api/guards/redirect-to"
+            ]
+          },
+          {
+            "group": "Router Hooks",
+            "pages": [
+              "api/router/use-navigate",
+              "api/router/use-params",
+              "api/router/use-location"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/overview",
+              "development/monorepo-structure",
+              "development/testing",
+              "development/publishing"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

@@ -1,0 +1,149 @@
+---
+title: useAppShell
+description: Hook to access the full AppShell context including configuration and dynamic data
+---
+
+React hook to access the full AppShell context, including both static configuration (title, icon, modules) and dynamic context data. For better performance, consider using `useAppShellConfig()` or `useAppShellData()` if you only need one or the other.
+
+## Signature
+
+```typescript
+const useAppShell: () => {
+  title?: string;
+  icon?: ReactNode;
+  configurations: RootConfiguration;
+  contextData: ContextData;
+}
+```
+
+## Returns
+
+<ResponseField name="title" type="string | undefined">
+  App title passed to AppShell
+</ResponseField>
+
+<ResponseField name="icon" type="ReactNode | undefined">
+  App icon passed to AppShell
+</ResponseField>
+
+<ResponseField name="configurations" type="RootConfiguration">
+  Configuration object containing modules, settings resources, basePath, errorBoundary, and locale
+  
+  <Expandable title="properties">
+    <ResponseField name="modules" type="Module[]">
+      Array of registered modules
+    </ResponseField>
+    
+    <ResponseField name="settingsResources" type="Resource[]">
+      Resources that appear only in Settings menu
+    </ResponseField>
+    
+    <ResponseField name="basePath" type="string | undefined">
+      Base path for the application
+    </ResponseField>
+    
+    <ResponseField name="errorBoundary" type="ReactNode">
+      Error boundary component
+    </ResponseField>
+    
+    <ResponseField name="locale" type="string">
+      Current locale code (e.g., "en", "ja")
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="contextData" type="ContextData">
+  Custom context data passed to AppShell. Type-safe when augmented via `AppShellRegister`
+</ResponseField>
+
+## Usage
+
+### Basic Usage
+
+```tsx
+import { useAppShell } from "@tailor-platform/app-shell";
+
+const CustomComponent = () => {
+  const { title, configurations, contextData } = useAppShell();
+  
+  return (
+    <div>
+      <h1>{title}</h1>
+      <p>Locale: {configurations.locale}</p>
+      <p>Modules: {configurations.modules.length}</p>
+    </div>
+  );
+};
+```
+
+### Accessing Context Data
+
+```tsx
+import { useAppShell } from "@tailor-platform/app-shell";
+
+const UserInfo = () => {
+  const { contextData } = useAppShell();
+  
+  return (
+    <div>
+      <p>User: {contextData.currentUser?.name}</p>
+      <p>Email: {contextData.currentUser?.email}</p>
+    </div>
+  );
+};
+```
+
+### Type-Safe Context Data
+
+Define your context data type using TypeScript module augmentation:
+
+```typescript
+// types/app-shell.d.ts
+declare module "@tailor-platform/app-shell" {
+  interface AppShellRegister {
+    contextData: {
+      apiClient: ApiClient;
+      currentUser: User | null;
+      featureFlags: Record<string, boolean>;
+    };
+  }
+}
+```
+
+Then use it with full type safety:
+
+```tsx
+import { useAppShell } from "@tailor-platform/app-shell";
+
+function MyComponent() {
+  const { contextData } = useAppShell();
+  
+  // contextData is fully typed
+  const user = contextData.currentUser;
+  const flags = contextData.featureFlags;
+  
+  return <div>Welcome, {user?.name}</div>;
+}
+```
+
+## Performance Considerations
+
+This hook subscribes to both the config context and data context. If you only need configuration or only need context data, use the specialized hooks instead:
+
+- Use `useAppShellConfig()` for static configuration only (title, icon, modules, basePath)
+- Use `useAppShellData()` for dynamic context data only
+
+This avoids unnecessary re-renders when only one context changes.
+
+```tsx
+// Instead of this:
+const { configurations } = useAppShell();
+
+// Use this for better performance:
+const { configurations } = useAppShellConfig();
+```
+
+## Related Hooks
+
+- `useAppShellConfig()` - Access only configuration (better performance)
+- `useAppShellData()` - Access only context data (better performance)

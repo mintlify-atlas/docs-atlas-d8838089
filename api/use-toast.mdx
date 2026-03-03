@@ -1,0 +1,335 @@
+---
+title: useToast
+description: Hook for displaying toast notifications
+---
+
+React hook that provides access to the toast notification system. Built on top of [Sonner](https://sonner.emilkowal.ski/) for displaying temporary toast messages.
+
+## Signature
+
+```typescript
+const useToast: () => typeof toast
+```
+
+## Returns
+
+Returns the `toast` function from Sonner with all its methods:
+
+<ResponseField name="toast" type="function">
+  Main toast function for displaying messages
+  
+  <Expandable title="methods">
+    <ResponseField name="toast(message, options?)">
+      Display a default toast message
+    </ResponseField>
+    
+    <ResponseField name="toast.success(message, options?)">
+      Display a success toast with checkmark icon
+    </ResponseField>
+    
+    <ResponseField name="toast.error(message, options?)">
+      Display an error toast with error icon
+    </ResponseField>
+    
+    <ResponseField name="toast.warning(message, options?)">
+      Display a warning toast
+    </ResponseField>
+    
+    <ResponseField name="toast.info(message, options?)">
+      Display an info toast
+    </ResponseField>
+    
+    <ResponseField name="toast.loading(message, options?)">
+      Display a loading toast with spinner
+    </ResponseField>
+    
+    <ResponseField name="toast.promise(promise, options)">
+      Display toast that updates based on promise resolution
+    </ResponseField>
+    
+    <ResponseField name="toast.dismiss(toastId?)">
+      Dismiss a specific toast or all toasts
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Basic Toast
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+
+function MyComponent() {
+  const toast = useToast();
+
+  const handleClick = () => {
+    toast("Hello, World!");
+  };
+
+  return <button onClick={handleClick}>Show Toast</button>;
+}
+```
+
+### Success Toast
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+
+function SaveButton() {
+  const toast = useToast();
+
+  const handleSave = async () => {
+    try {
+      await saveData();
+      toast.success("Changes saved successfully!");
+    } catch (error) {
+      toast.error("Failed to save changes");
+    }
+  };
+
+  return <button onClick={handleSave}>Save</button>;
+}
+```
+
+### Error Toast
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+
+function DeleteButton({ itemId }: { itemId: string }) {
+  const toast = useToast();
+
+  const handleDelete = async () => {
+    try {
+      await deleteItem(itemId);
+      toast.success("Item deleted");
+    } catch (error) {
+      toast.error("Failed to delete item. Please try again.");
+    }
+  };
+
+  return (
+    <button onClick={handleDelete}>
+      Delete
+    </button>
+  );
+}
+```
+
+### Loading Toast
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+
+function ExportButton() {
+  const toast = useToast();
+
+  const handleExport = async () => {
+    const toastId = toast.loading("Exporting data...");
+    
+    try {
+      await exportData();
+      toast.success("Export complete!", { id: toastId });
+    } catch (error) {
+      toast.error("Export failed", { id: toastId });
+    }
+  };
+
+  return <button onClick={handleExport}>Export</button>;
+}
+```
+
+### Promise Toast
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+
+function UploadButton() {
+  const toast = useToast();
+
+  const handleUpload = async () => {
+    const uploadPromise = uploadFile();
+
+    toast.promise(uploadPromise, {
+      loading: "Uploading...",
+      success: "File uploaded successfully!",
+      error: "Upload failed",
+    });
+  };
+
+  return <button onClick={handleUpload}>Upload</button>;
+}
+```
+
+### Toast with Description
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+
+function NotificationButton() {
+  const toast = useToast();
+
+  const showNotification = () => {
+    toast.success("Order confirmed", {
+      description: "Your order #12345 has been confirmed and will ship soon.",
+    });
+  };
+
+  return <button onClick={showNotification}>Show Notification</button>;
+}
+```
+
+### Toast with Action
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+
+function UndoExample() {
+  const toast = useToast();
+
+  const handleDelete = (item: Item) => {
+    // Delete the item
+    deleteItem(item.id);
+
+    toast.success("Item deleted", {
+      action: {
+        label: "Undo",
+        onClick: () => restoreItem(item),
+      },
+    });
+  };
+
+  return <button onClick={() => handleDelete(item)}>Delete</button>;
+}
+```
+
+### Dismissing Toasts
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+
+function ToastControls() {
+  const toast = useToast();
+
+  const showToast = () => {
+    const id = toast("This is a toast");
+    
+    // Dismiss this specific toast after 2 seconds
+    setTimeout(() => {
+      toast.dismiss(id);
+    }, 2000);
+  };
+
+  const dismissAll = () => {
+    // Dismiss all toasts
+    toast.dismiss();
+  };
+
+  return (
+    <div>
+      <button onClick={showToast}>Show Toast</button>
+      <button onClick={dismissAll}>Dismiss All</button>
+    </div>
+  );
+}
+```
+
+## Toast Options
+
+All toast methods accept an optional options object:
+
+<ParamField name="description" type="string">
+  Additional description text below the main message
+</ParamField>
+
+<ParamField name="duration" type="number">
+  Duration in milliseconds before auto-dismissing (default: 4000)
+</ParamField>
+
+<ParamField name="id" type="string | number">
+  Unique identifier for the toast. Use this to update or dismiss specific toasts
+</ParamField>
+
+<ParamField name="action" type="object">
+  Action button configuration
+  
+  <Expandable title="properties">
+    <ParamField name="label" type="string" required>
+      Button text
+    </ParamField>
+    
+    <ParamField name="onClick" type="() => void" required>
+      Click handler
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField name="onDismiss" type="(toast: Toast) => void">
+  Callback when toast is dismissed
+</ParamField>
+
+<ParamField name="onAutoClose" type="(toast: Toast) => void">
+  Callback when toast auto-closes
+</ParamField>
+
+## Example: Form Submission
+
+```tsx
+import { useToast } from "@tailor-platform/app-shell";
+import { useState } from "react";
+
+function UserForm() {
+  const toast = useToast();
+  const [formData, setFormData] = useState({ name: "", email: "" });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const submitPromise = fetch("/api/users", {
+      method: "POST",
+      body: JSON.stringify(formData),
+    });
+
+    toast.promise(submitPromise, {
+      loading: "Creating user...",
+      success: (response) => {
+        setFormData({ name: "", email: "" });
+        return "User created successfully!";
+      },
+      error: (error) => {
+        console.error(error);
+        return "Failed to create user. Please try again.";
+      },
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={formData.name}
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        placeholder="Name"
+      />
+      <input
+        value={formData.email}
+        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        placeholder="Email"
+      />
+      <button type="submit">Create User</button>
+    </form>
+  );
+}
+```
+
+## Best Practices
+
+1. **Keep messages concise**: Toast messages should be brief and scannable
+2. **Use appropriate variants**: Choose the right variant (success, error, warning) for the context
+3. **Provide actionable feedback**: Include action buttons when users can respond (e.g., "Undo")
+4. **Don't overuse**: Avoid showing multiple toasts simultaneously for unrelated actions
+5. **Set appropriate duration**: Longer messages may need longer display time
+
+## Related
+
+For more advanced usage and customization options, refer to the [Sonner documentation](https://sonner.emilkowal.ski/).

@@ -1,0 +1,386 @@
+---
+title: 'useLocation'
+description: 'Hook for accessing the current location object'
+---
+
+`useLocation` is a React hook that returns the current location object, which contains information about the current URL including pathname, search parameters, hash, and navigation state. It's re-exported from react-router v7.
+
+<Warning>
+  Always import `useLocation` from `@tailor-platform/app-shell`, not from `react-router` directly. AppShell manages its own router instance, and importing from the wrong package will cause the hook to return incorrect values.
+</Warning>
+
+## Usage
+
+```tsx
+import { useLocation } from '@tailor-platform/app-shell';
+
+const MyComponent = () => {
+  const location = useLocation();
+
+  return <div>Current path: {location.pathname}</div>;
+};
+```
+
+## Signature
+
+```typescript
+const location: Location = useLocation();
+
+interface Location {
+  pathname: string;      // Current URL path (e.g., "/orders/123")
+  search: string;        // Query string (e.g., "?tab=details&sort=asc")
+  hash: string;          // URL hash (e.g., "#section")
+  state: any;           // State passed via navigate() or Link
+  key: string;          // Unique key for this location
+}
+```
+
+## Examples
+
+### Access Current Path
+
+```tsx
+import { useLocation } from '@tailor-platform/app-shell';
+
+const Breadcrumbs = () => {
+  const location = useLocation();
+  const paths = location.pathname.split('/').filter(Boolean);
+
+  return (
+    <nav>
+      {paths.map((path, index) => (
+        <span key={index}>
+          {index > 0 && ' / '}
+          {path}
+        </span>
+      ))}
+    </nav>
+  );
+};
+```
+
+### Access Query Parameters
+
+```tsx
+import { useLocation } from '@tailor-platform/app-shell';
+
+const ProductList = () => {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  
+  const category = searchParams.get('category') || 'all';
+  const sortBy = searchParams.get('sort') || 'name';
+
+  return (
+    <div>
+      <h1>Products - Category: {category}</h1>
+      <p>Sorted by: {sortBy}</p>
+    </div>
+  );
+};
+```
+
+### Track Navigation State
+
+Access state passed from the previous page:
+
+```tsx
+import { useLocation, useNavigate } from '@tailor-platform/app-shell';
+
+// Source page
+const OrderList = () => {
+  const navigate = useNavigate();
+  
+  const createOrder = () => {
+    navigate('/orders/new', {
+      state: { returnTo: '/orders', filter: 'pending' }
+    });
+  };
+
+  return <button onClick={createOrder}>Create Order</button>;
+};
+
+// Destination page
+const NewOrderPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { returnTo, filter } = location.state || {};
+
+  const handleCancel = () => {
+    if (returnTo) {
+      navigate(returnTo);
+    } else {
+      navigate('/orders');
+    }
+  };
+
+  return (
+    <div>
+      <h1>New Order</h1>
+      <button onClick={handleCancel}>Cancel</button>
+      {filter && <p>Will return to {filter} orders</p>}
+    </div>
+  );
+};
+```
+
+### Conditional Rendering Based on Path
+
+```tsx
+import { useLocation } from '@tailor-platform/app-shell';
+
+const Header = () => {
+  const location = useLocation();
+  const isOrdersPage = location.pathname.startsWith('/orders');
+
+  return (
+    <header>
+      <h1>My App</h1>
+      {isOrdersPage && <OrderFilters />}
+    </header>
+  );
+};
+```
+
+### Highlight Active Navigation Items
+
+```tsx
+import { useLocation, Link } from '@tailor-platform/app-shell';
+
+const Navigation = () => {
+  const location = useLocation();
+
+  const navItems = [
+    { path: '/dashboard', label: 'Dashboard' },
+    { path: '/orders', label: 'Orders' },
+    { path: '/products', label: 'Products' },
+  ];
+
+  return (
+    <nav>
+      {navItems.map((item) => (
+        <Link
+          key={item.path}
+          to={item.path}
+          style={{
+            fontWeight: location.pathname === item.path ? 'bold' : 'normal',
+            color: location.pathname === item.path ? 'blue' : 'black',
+          }}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
+};
+```
+
+### Sync UI with URL
+
+```tsx
+import { useLocation, useNavigate } from '@tailor-platform/app-shell';
+import { useEffect, useState } from 'react';
+
+const TabbedView = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const activeTab = searchParams.get('tab') || 'details';
+
+  const setActiveTab = (tab: string) => {
+    const newParams = new URLSearchParams(location.search);
+    newParams.set('tab', tab);
+    navigate(`${location.pathname}?${newParams.toString()}`);
+  };
+
+  return (
+    <div>
+      <div>
+        <button onClick={() => setActiveTab('details')}>Details</button>
+        <button onClick={() => setActiveTab('history')}>History</button>
+        <button onClick={() => setActiveTab('notes')}>Notes</button>
+      </div>
+      
+      {activeTab === 'details' && <DetailsTab />}
+      {activeTab === 'history' && <HistoryTab />}
+      {activeTab === 'notes' && <NotesTab />}
+    </div>
+  );
+};
+```
+
+### Analytics and Tracking
+
+```tsx
+import { useLocation } from '@tailor-platform/app-shell';
+import { useEffect } from 'react';
+
+const Analytics = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Track page view
+    analytics.track('page_view', {
+      path: location.pathname,
+      search: location.search,
+    });
+  }, [location.pathname, location.search]);
+
+  return null;
+};
+```
+
+### Scroll Restoration
+
+```tsx
+import { useLocation } from '@tailor-platform/app-shell';
+import { useEffect, useRef } from 'react';
+
+const ScrollManager = () => {
+  const location = useLocation();
+  const prevLocation = useRef(location);
+
+  useEffect(() => {
+    // Scroll to top on route change (unless hash is present)
+    if (location.pathname !== prevLocation.current.pathname) {
+      if (!location.hash) {
+        window.scrollTo(0, 0);
+      }
+    }
+    prevLocation.current = location;
+  }, [location]);
+
+  return null;
+};
+```
+
+## Working with Search Parameters
+
+### Using URLSearchParams
+
+```tsx
+import { useLocation } from '@tailor-platform/app-shell';
+
+const FilteredList = () => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  
+  // Get single value
+  const category = params.get('category');
+  
+  // Get multiple values
+  const tags = params.getAll('tag');
+  
+  // Check if param exists
+  const hasSort = params.has('sort');
+  
+  // Get all params as object
+  const allParams = Object.fromEntries(params.entries());
+
+  return (
+    <div>
+      <p>Category: {category}</p>
+      <p>Tags: {tags.join(', ')}</p>
+      <p>Has sort: {hasSort.toString()}</p>
+      <pre>{JSON.stringify(allParams, null, 2)}</pre>
+    </div>
+  );
+};
+```
+
+### Updating Query Parameters
+
+```tsx
+import { useLocation, useNavigate } from '@tailor-platform/app-shell';
+
+const SearchFilters = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const updateFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(location.search);
+    params.set(key, value);
+    navigate(`${location.pathname}?${params.toString()}`);
+  };
+
+  const removeFilter = (key: string) => {
+    const params = new URLSearchParams(location.search);
+    params.delete(key);
+    navigate(`${location.pathname}?${params.toString()}`);
+  };
+
+  return (
+    <div>
+      <input
+        type="text"
+        onChange={(e) => updateFilter('search', e.target.value)}
+        placeholder="Search..."
+      />
+      <button onClick={() => removeFilter('search')}>Clear</button>
+    </div>
+  );
+};
+```
+
+## Comparison with Other Hooks
+
+| Use Case | Hook |
+|----------|------|
+| Get current URL path | `useLocation()` |
+| Get route parameters (`:id`) | `useParams()` |
+| Navigate programmatically | `useNavigate()` |
+| Get and set search params | `useSearchParams()` |
+
+## Common Patterns
+
+### Create a Custom Hook for Query Params
+
+```tsx
+import { useLocation } from '@tailor-platform/app-shell';
+import { useMemo } from 'react';
+
+function useQueryParams() {
+  const location = useLocation();
+  
+  return useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search]
+  );
+}
+
+// Usage
+const MyComponent = () => {
+  const params = useQueryParams();
+  const tab = params.get('tab') || 'default';
+  
+  return <div>Active tab: {tab}</div>;
+};
+```
+
+### Preserve Query Params on Navigation
+
+```tsx
+import { useLocation, useNavigate } from '@tailor-platform/app-shell';
+
+const ProductCard = ({ productId }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const viewProduct = () => {
+    // Preserve existing query params when navigating
+    navigate(`/products/${productId}${location.search}`);
+  };
+
+  return <button onClick={viewProduct}>View Product</button>;
+};
+```
+
+## Related Hooks
+
+- [`useNavigate`](/api/router/use-navigate) - Programmatic navigation
+- [`useParams`](/api/router/use-params) - Access route parameters
+
+## See Also
+
+- [Routing and Navigation Guide](/routing-and-navigation)
+- [Location API](https://reactrouter.com/start/library/navigating) - React Router v7 documentation

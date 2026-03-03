@@ -1,0 +1,452 @@
+---
+title: DescriptionCard
+description: Card component for displaying structured key-value information in ERP applications
+---
+
+The DescriptionCard component is designed for displaying structured document information like orders, invoices, products, and customer details. It provides automatic field rendering based on data types with responsive layouts.
+
+## Import
+
+```tsx
+import { DescriptionCard } from "@tailor-platform/app-shell";
+```
+
+## Basic Usage
+
+```tsx
+import { DescriptionCard } from "@tailor-platform/app-shell";
+
+const OrderDetails = ({ order }) => (
+  <DescriptionCard
+    data={order}
+    title="Order Summary"
+    fields={[
+      { key: "orderNumber", label: "Order #" },
+      { key: "status", label: "Status", type: "badge" },
+      { key: "total", label: "Total", type: "money" },
+      { key: "createdAt", label: "Created", type: "date" },
+    ]}
+  />
+);
+```
+
+## Props
+
+<ParamField path="data" type="Record<string, unknown>" required>
+  Raw data object containing all field values. The component extracts values using the `key` paths defined in fields.
+</ParamField>
+
+<ParamField path="title" type="string" required>
+  Card title displayed in the header section
+</ParamField>
+
+<ParamField path="fields" type="FieldConfig[]" required>
+  Array of field configurations and dividers. Each field defines how to extract and display a value from the data object.
+  
+  See [Field Types](#field-types) for available field configurations.
+</ParamField>
+
+<ParamField path="columns" type="3 | 4" default="3">
+  Number of columns to display on desktop. The layout automatically responds to container width:
+  - **3 columns**: 1 → 2 → 3 columns (at 400px, 600px breakpoints)
+  - **4 columns**: 1 → 2 → 3 → 4 columns (at 400px, 600px, 800px breakpoints)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for custom styling
+</ParamField>
+
+<ParamField path="headerAction" type="React.ReactNode">
+  Action component displayed in the card header (e.g., an Edit button)
+  
+  ```tsx
+  headerAction={<Button variant="ghost">Edit</Button>}
+  ```
+</ParamField>
+
+## Field Types
+
+The DescriptionCard supports 7 specialized field types, each with specific rendering and metadata options.
+
+### Text Field (default)
+
+Standard text display with optional copy functionality and truncation.
+
+```tsx
+{
+  key: "orderNumber",
+  label: "Order #",
+  type: "text", // optional, default
+  meta: {
+    copyable: true, // Show copy button
+    truncateLines: 2, // Truncate after 2 lines with tooltip
+  }
+}
+```
+
+### Badge Field
+
+Displays values as colored status badges with automatic variant mapping.
+
+```tsx
+{
+  key: "status",
+  label: "Status",
+  type: "badge",
+  meta: {
+    badgeVariantMap: {
+      CONFIRMED: "outline-success",
+      PENDING: "outline-warning",
+      CANCELLED: "outline-error",
+    },
+  },
+}
+```
+
+**Features:**
+- Automatically converts values to sentence case ("CONFIRMED" → "Confirmed")
+- Falls back to neutral variant if value not in map
+- See [Badge component](/components/badge) for available variants
+
+### Money Field
+
+Formats currency values with proper locale formatting.
+
+```tsx
+{
+  key: "total",
+  label: "Total",
+  type: "money",
+  meta: {
+    currencyKey: "currency", // Path to currency code (e.g., "USD")
+  },
+}
+```
+
+Example data:
+```json
+{
+  "total": 1234.56,
+  "currency": "USD"
+}
+```
+Displays: `$1,234.56`
+
+### Date Field
+
+Formats date/timestamp values with multiple format options.
+
+```tsx
+{
+  key: "createdAt",
+  label: "Created",
+  type: "date",
+  meta: {
+    dateFormat: "medium", // "short" | "medium" | "long" | "relative"
+  },
+}
+```
+
+Format examples:
+- `short`: 12/25/2023
+- `medium`: Dec 25, 2023
+- `long`: December 25, 2023
+- `relative`: 2 days ago
+
+### Link Field
+
+Renders clickable links with optional external icon.
+
+```tsx
+{
+  key: "website",
+  label: "Website",
+  type: "link",
+  meta: {
+    hrefKey: "websiteUrl", // Path to URL in data
+    external: true, // Open in new tab
+  },
+}
+```
+
+### Reference Field
+
+Displays a value with a link to a related document.
+
+```tsx
+{
+  key: "customer.name",
+  label: "Customer",
+  type: "reference",
+  meta: {
+    referenceIdKey: "customer.id",
+    referenceUrlPattern: "/customers/{id}", // {id} replaced with referenceIdKey value
+  },
+}
+```
+
+### Address Field
+
+Displays multi-line address information (always takes full width).
+
+```tsx
+{
+  key: "shippingAddress",
+  label: "Shipping Address",
+  type: "address",
+}
+```
+
+Expects address object with:
+```json
+{
+  "shippingAddress": {
+    "street": "123 Main St",
+    "city": "New York",
+    "state": "NY",
+    "zip": "10001",
+    "country": "USA"
+  }
+}
+```
+
+## Field Configuration Options
+
+### Nested Data Access
+
+Use dot notation to access nested properties:
+
+```tsx
+fields={[
+  { key: "customer.name", label: "Customer Name" },
+  { key: "customer.email", label: "Customer Email" },
+  { key: "shipping.address.city", label: "Ship To City" },
+]}
+```
+
+### Empty Value Handling
+
+Control how empty/null/undefined values are displayed:
+
+```tsx
+{
+  key: "notes",
+  label: "Notes",
+  emptyBehavior: "hide", // "dash" (default) | "hide"
+}
+```
+
+- `"dash"` (default): Shows "—" for empty values
+- `"hide"`: Completely hides the field if value is empty
+
+### Section Dividers
+
+Add visual separators between groups of fields:
+
+```tsx
+fields={[
+  // Customer section
+  { key: "customer.name", label: "Customer" },
+  { key: "customer.email", label: "Email" },
+  
+  { type: "divider" }, // Horizontal line
+  
+  // Payment section
+  { key: "paymentMethod", label: "Payment Method" },
+  { key: "total", label: "Total", type: "money" },
+]}
+```
+
+## Complete Example
+
+```tsx
+import { DescriptionCard } from "@tailor-platform/app-shell";
+import { Button } from "@/components/ui/button";
+
+const OrderDetailsCard = ({ order }) => (
+  <DescriptionCard
+    data={order}
+    title="Order Summary"
+    headerAction={
+      <Button variant="outline" size="sm">
+        Edit Order
+      </Button>
+    }
+    columns={3}
+    fields={[
+      // Status and identifiers
+      {
+        key: "status",
+        label: "Status",
+        type: "badge",
+        meta: {
+          badgeVariantMap: {
+            CONFIRMED: "outline-success",
+            PENDING: "outline-warning",
+            SHIPPED: "outline-info",
+            CANCELLED: "outline-error",
+          },
+        },
+      },
+      {
+        key: "orderNumber",
+        label: "Order #",
+        meta: { copyable: true },
+      },
+      {
+        key: "createdAt",
+        label: "Order Date",
+        type: "date",
+        meta: { dateFormat: "medium" },
+      },
+      
+      // Customer information
+      { type: "divider" },
+      {
+        key: "customer.name",
+        label: "Customer",
+        type: "reference",
+        meta: {
+          referenceIdKey: "customer.id",
+          referenceUrlPattern: "/customers/{id}",
+        },
+      },
+      { key: "customer.email", label: "Email" },
+      { key: "customer.phone", label: "Phone" },
+      
+      // Financial details
+      { type: "divider" },
+      {
+        key: "subtotal",
+        label: "Subtotal",
+        type: "money",
+        meta: { currencyKey: "currency" },
+      },
+      {
+        key: "tax",
+        label: "Tax",
+        type: "money",
+        meta: { currencyKey: "currency" },
+      },
+      {
+        key: "total",
+        label: "Total",
+        type: "money",
+        meta: { currencyKey: "currency" },
+      },
+      
+      // Shipping address (full width)
+      { type: "divider" },
+      {
+        key: "shippingAddress",
+        label: "Shipping Address",
+        type: "address",
+      },
+      
+      // Optional notes
+      {
+        key: "notes",
+        label: "Notes",
+        meta: { truncateLines: 3 },
+        emptyBehavior: "hide",
+      },
+    ]}
+  />
+);
+```
+
+## Responsive Behavior
+
+The DescriptionCard uses CSS container queries to respond to its container width (not viewport width). This ensures correct behavior when placed in narrow containers or sidebars.
+
+**3 Column Mode** (default):
+- Container < 400px: 1 column
+- Container 400px - 599px: 2 columns
+- Container ≥ 600px: 3 columns
+
+**4 Column Mode**:
+- Container < 400px: 1 column  
+- Container 400px - 599px: 2 columns
+- Container 600px - 799px: 3 columns
+- Container ≥ 800px: 4 columns
+
+## TypeScript
+
+The component exports comprehensive TypeScript types:
+
+```tsx
+import { 
+  type DescriptionCardProps,
+  type FieldConfig,
+  type FieldDefinition,
+  type FieldType,
+  type FieldMeta,
+} from "@tailor-platform/app-shell";
+
+// Type-safe field configuration
+const fields: FieldConfig[] = [
+  {
+    key: "status",
+    label: "Status",
+    type: "badge",
+    meta: {
+      badgeVariantMap: {
+        CONFIRMED: "outline-success",
+      },
+    },
+  },
+];
+```
+
+## Common Patterns
+
+### Multi-Currency Support
+
+```tsx
+const fields: FieldConfig[] = [
+  {
+    key: "price",
+    label: "Price",
+    type: "money",
+    meta: { currencyKey: "currency" },
+  },
+];
+
+// Data example
+const product = {
+  price: 99.99,
+  currency: "EUR", // Displays: €99.99
+};
+```
+
+### Dynamic Status Badges
+
+```tsx
+const statusMap: Record<string, BadgeVariantType> = {
+  DRAFT: "outline-neutral",
+  PENDING_APPROVAL: "outline-warning",
+  APPROVED: "outline-success",
+  REJECTED: "outline-error",
+};
+
+const fields: FieldConfig[] = [
+  {
+    key: "status",
+    label: "Status",
+    type: "badge",
+    meta: { badgeVariantMap: statusMap },
+  },
+];
+```
+
+### Conditional Field Display
+
+```tsx
+const fields: FieldConfig[] = [
+  {
+    key: "internalNotes",
+    label: "Internal Notes",
+    emptyBehavior: "hide", // Only show if there are notes
+  },
+];
+```

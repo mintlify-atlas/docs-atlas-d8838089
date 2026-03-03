@@ -1,0 +1,190 @@
+---
+title: useAuth
+description: Hook for accessing authentication state and methods
+---
+
+React hook to access authentication state and methods when using `AuthProvider`. Provides access to the current authentication state and functions to login, logout, and check auth status.
+
+## Signature
+
+```typescript
+const useAuth: () => {
+  error: string | null;
+  isAuthenticated: boolean;
+  isReady: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  checkAuthStatus: () => Promise<AuthState>;
+}
+```
+
+## Returns
+
+<ResponseField name="error" type="string | null">
+  Error message if authentication failed, null otherwise
+</ResponseField>
+
+<ResponseField name="isAuthenticated" type="boolean">
+  Whether the user is currently authenticated
+</ResponseField>
+
+<ResponseField name="isReady" type="boolean">
+  Whether the initial authentication check has completed. Check this before rendering authenticated content to avoid flashing unauthenticated state.
+</ResponseField>
+
+<ResponseField name="login" type="() => Promise<void>">
+  Initiates the login process. Redirects the user to the Tailor Platform authentication page.
+</ResponseField>
+
+<ResponseField name="logout" type="() => Promise<void>">
+  Logs out the current user. Clears authentication tokens and user session.
+</ResponseField>
+
+<ResponseField name="checkAuthStatus" type="() => Promise<AuthState>">
+  Checks the current authentication status. Makes a network request to verify auth status and attempts to refresh tokens internally if they are expired.
+</ResponseField>
+
+## Usage
+
+### Basic Authentication Flow
+
+```tsx
+import { useAuth } from "@tailor-platform/app-shell";
+
+function MyComponent() {
+  const { isAuthenticated, isReady, login, logout } = useAuth();
+
+  if (!isReady) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <button onClick={login}>Log In</button>
+    );
+  }
+
+  return (
+    <div>
+      <p>You are logged in!</p>
+      <button onClick={logout}>Log Out</button>
+    </div>
+  );
+}
+```
+
+### Protected Content
+
+```tsx
+import { useAuth } from "@tailor-platform/app-shell";
+
+function ProtectedPage() {
+  const { isAuthenticated, isReady, login } = useAuth();
+
+  if (!isReady) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div>
+        <p>You need to be logged in to view this page</p>
+        <button onClick={login}>Log In</button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1>Protected Content</h1>
+      <p>This is only visible to authenticated users</p>
+    </div>
+  );
+}
+```
+
+### Handling Authentication Errors
+
+```tsx
+import { useAuth } from "@tailor-platform/app-shell";
+
+function LoginButton() {
+  const { error, isAuthenticated, login } = useAuth();
+
+  if (isAuthenticated) {
+    return null;
+  }
+
+  return (
+    <div>
+      {error && (
+        <div className="error">
+          Authentication failed: {error}
+        </div>
+      )}
+      <button onClick={login}>Log In</button>
+    </div>
+  );
+}
+```
+
+### Manual Auth Status Check
+
+```tsx
+import { useAuth } from "@tailor-platform/app-shell";
+
+function RefreshAuthButton() {
+  const { checkAuthStatus } = useAuth();
+  const [checking, setChecking] = useState(false);
+
+  const handleRefresh = async () => {
+    setChecking(true);
+    try {
+      const state = await checkAuthStatus();
+      console.log("Auth state:", state);
+    } catch (error) {
+      console.error("Failed to check auth:", error);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <button onClick={handleRefresh} disabled={checking}>
+      {checking ? "Checking..." : "Refresh Auth Status"}
+    </button>
+  );
+}
+```
+
+## Prerequisites
+
+This hook must be used within an `AuthProvider` component:
+
+```tsx
+import { createAuthClient, AuthProvider } from "@tailor-platform/app-shell";
+
+const authClient = createAuthClient({
+  clientId: "your-client-id",
+  appUri: "https://xyz.erp.dev",
+});
+
+function App() {
+  return (
+    <AuthProvider client={authClient}>
+      <YourAppComponents />
+    </AuthProvider>
+  );
+}
+```
+
+<Warning>
+  If you use `useAuth` outside of an `AuthProvider`, it will throw an error: "useAuth/useAuthSuspense must be used within an AuthProvider"
+</Warning>
+
+## Related
+
+- [Authentication](/concepts/authentication) - Complete authentication setup guide
+- `AuthProvider` - Authentication provider component
+- `createAuthClient()` - Create authentication client
+- `useAuthSuspense()` - Suspense-compatible authentication hook

@@ -1,0 +1,248 @@
+---
+title: Guards Overview
+description: Control access to modules and resources with composable guard functions
+---
+
+Guards are functions that control access to modules and resources in your AppShell application. They execute before a route renders and can allow access, deny access (showing 404), or redirect to another path.
+
+## How Guards Work
+
+Guards are executed:
+- **Before route rendering**: Guards run during the route's loader phase
+- **In order**: Guards in the array are evaluated sequentially
+- **Short-circuit on non-pass**: The first guard that returns `hidden()` or `redirectTo()` stops execution
+- **Once per navigation**: Re-evaluated when navigating to the route
+
+## Guard Function Type
+
+```typescript
+type Guard = (ctx: GuardContext) => Promise<GuardResult> | GuardResult;
+
+type GuardContext = {
+  context: ContextData;  // Custom context from AppShell
+};
+
+type GuardResult =
+  | { type: "pass" }                  // Allow access
+  | { type: "hidden" }                // Deny access (show 404)
+  | { type: "redirect"; to: string }; // Redirect to path
+```
+
+## Basic Usage
+
+### Module-Level Guards
+
+Apply guards to an entire module and all its resources:
+
+```tsx
+import { defineModule, pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+const adminModule = defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [usersResource, settingsResource],
+  guards: [
+    ({ context }) => {
+      if (!context.currentUser) {
+        return redirectTo("/login");
+      }
+      if (context.currentUser.role !== "admin") {
+        return hidden();
+      }
+      return pass();
+    }
+  ]
+});
+```
+
+### Resource-Level Guards
+
+Apply guards to individual resources:
+
+```tsx
+import { defineResource, pass, hidden } from "@tailor-platform/app-shell";
+
+const billingResource = defineResource({
+  path: "billing",
+  component: BillingPage,
+  guards: [
+    ({ context }) => {
+      const isPremium = context.currentUser?.plan === "premium";
+      return isPremium ? pass() : hidden();
+    }
+  ]
+});
+```
+
+## Composable Guards
+
+Guards are composable - define reusable guard functions:
+
+```tsx
+import { type Guard, pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+// Reusable guards
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");
+  }
+  return pass();
+};
+
+const requireAdmin: Guard = ({ context }) => {
+  if (context.currentUser?.role !== "admin") {
+    return hidden();
+  }
+  return pass();
+};
+
+const requirePlan = (plan: string): Guard => {
+  return ({ context }) => {
+    if (context.currentUser?.plan !== plan) {
+      return hidden();
+    }
+    return pass();
+  };
+};
+
+// Compose guards
+defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [adminResources],
+  guards: [requireAuth, requireAdmin]
+});
+
+defineResource({
+  path: "premium-features",
+  component: PremiumFeatures,
+  guards: [requireAuth, requirePlan("premium")]
+});
+```
+
+## Async Guards
+
+Guards can be async for permission checks or feature flags:
+
+```tsx
+const checkPermission = async ({ context }): Promise<GuardResult> => {
+  const hasAccess = await fetch("/api/permissions/reports")
+    .then(r => r.ok);
+  
+  return hasAccess ? pass() : hidden();
+};
+
+defineModule({
+  path: "reports",
+  component: ReportsPage,
+  resources: [reportsResources],
+  guards: [checkPermission]
+});
+```
+
+## Accessing Context Data
+
+Guards receive the `context` object from AppShell's `contextData` prop:
+
+```tsx
+// Define context type (in types/app-shell.d.ts)
+declare module "@tailor-platform/app-shell" {
+  interface AppShellRegister {
+    contextData: {
+      currentUser: User | null;
+      apiClient: ApiClient;
+      featureFlags: Record<string, boolean>;
+    };
+  }
+}
+
+// Pass context to AppShell
+<AppShell
+  modules={modules}
+  contextData={{
+    currentUser,
+    apiClient,
+    featureFlags
+  }}
+>
+  <SidebarLayout />
+</AppShell>
+
+// Use in guards
+const requireFeature = (feature: string): Guard => {
+  return ({ context }) => {
+    return context.featureFlags[feature] ? pass() : hidden();
+  };
+};
+```
+
+## Guard Results
+
+Guards must return one of three result types:
+
+### `pass()`
+Allow access and continue to the next guard or render the component.
+
+### `hidden()`
+Deny access and show a 404 Not Found page.
+
+### `redirectTo(path)`
+Redirect the user to another path.
+
+## Effect on Navigation
+
+When guards deny access:
+- **Navigation**: The route is not accessible via direct URL or client-side navigation
+- **Sidebar**: Hidden routes do not appear in navigation menus
+- **Command Palette**: Hidden routes are excluded from search results
+- **404 Behavior**: `hidden()` returns a 404 response
+- **Redirects**: `redirectTo()` performs a client-side redirect
+
+## Common Patterns
+
+### Authentication Check
+```tsx
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");
+  }
+  return pass();
+};
+```
+
+### Role-Based Access
+```tsx
+const requireRole = (role: string): Guard => {
+  return ({ context }) => {
+    if (context.currentUser?.role !== role) {
+      return hidden();
+    }
+    return pass();
+  };
+};
+```
+
+### Feature Flag
+```tsx
+const requireFeature = (flag: string): Guard => {
+  return ({ context }) => {
+    return context.featureFlags[flag] ? pass() : hidden();
+  };
+};
+```
+
+### Permission Check
+```tsx
+const requirePermission = (permission: string): Guard => {
+  return async ({ context }) => {
+    const hasPermission = await context.apiClient.checkPermission(permission);
+    return hasPermission ? pass() : hidden();
+  };
+};
+```
+
+## Next Steps
+
+- [pass()](/api/guards/pass) - Allow access to routes
+- [hidden()](/api/guards/hidden) - Deny access and show 404
+- [redirectTo()](/api/guards/redirect-to) - Redirect to another path

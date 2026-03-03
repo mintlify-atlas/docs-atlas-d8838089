@@ -1,0 +1,311 @@
+---
+title: defineI18nLabels
+description: Define internationalization labels for multiple locales with type-safe usage
+---
+
+Defines internationalization labels for multiple locales. The `en` locale is required as the default locale. Labels can be either static strings or dynamic functions that take props.
+
+## Signature
+
+```typescript
+function defineI18nLabels<
+  const L extends Exclude<string, "en">,
+  const Def extends Record<string, LabelValue>
+>(labels: I18nLabels<Def, L>): {
+  useT: () => TFunction;
+  t: <K extends keyof Def>(key: K, ...args: TFunctionArgs<K>) => LocalizedString;
+}
+```
+
+## Parameters
+
+<ParamField path="labels" type="I18nLabels" required>
+  Object with locale keys containing label definitions. The `en` locale is required.
+  
+  Each locale object contains:
+  - Static string labels: `key: "Label text"`
+  - Dynamic function labels: `key: (props: T) => string`
+  
+  All locales must have the same label keys as the `en` locale. For dynamic labels (functions), the props type must match across all locales.
+</ParamField>
+
+## Return Type
+
+<ResponseField name="useT" type="() => TFunction">
+  React hook that returns a translator function for use in components.
+  
+  The translator function has two forms:
+  - `t(key)` - For static labels
+  - `t(key, props)` - For dynamic labels with props
+  - `t.dynamic(key, fallback)` - For runtime-constructed keys with fallback
+</ResponseField>
+
+<ResponseField name="t" type="<K extends keyof Def>(key: K, ...args: TFunctionArgs<K>) => LocalizedString">
+  Function to get a `LocalizedString` for use in module/resource `meta.title`.
+  
+  Note: When using dynamic labels with props in meta.title, the props are bound at definition time (when calling `labels.t`), not at render time.
+</ResponseField>
+
+## Examples
+
+### Basic Labels Definition
+
+```tsx
+import { defineI18nLabels } from "@tailor-platform/app-shell";
+
+export const labels = defineI18nLabels({
+  en: {
+    welcome: "Welcome to our app",
+    hello: "Hello",
+    goodbye: "Goodbye",
+  },
+  ja: {
+    welcome: "アプリへようこそ",
+    hello: "こんにちは",
+    goodbye: "さようなら",
+  },
+});
+
+// Export useT hook for use in components
+export const useT = labels.useT;
+```
+
+### Dynamic Labels with Props
+
+```tsx
+import { defineI18nLabels } from "@tailor-platform/app-shell";
+
+export const labels = defineI18nLabels({
+  en: {
+    greeting: (props: { name: string }) => `Hello, ${props.name}!`,
+    itemCount: (props: { count: number }) => `${props.count} items`,
+    welcome: (props: { name: string; role: string }) => 
+      `Welcome, ${props.name} (${props.role})`,
+  },
+  ja: {
+    greeting: (props: { name: string }) => `こんにちは、${props.name}さん!`,
+    itemCount: (props: { count: number }) => `${props.count}個のアイテム`,
+    welcome: (props: { name: string; role: string }) => 
+      `ようこそ、${props.name}さん (${props.role})`,
+  },
+});
+
+export const useT = labels.useT;
+```
+
+### Using in Components
+
+```tsx
+import { useT } from "./i18n-labels";
+
+const MyComponent = ({ userName, itemCount }: { userName: string; itemCount: number }) => {
+  const t = useT();
+  
+  return (
+    <div>
+      {/* Static label */}
+      <h1>{t("welcome")}</h1>
+      
+      {/* Dynamic labels with type-safe props */}
+      <p>{t("greeting", { name: userName })}</p>
+      <p>{t("itemCount", { count: itemCount })}</p>
+    </div>
+  );
+};
+```
+
+### Dynamic Label Resolution
+
+Use `t.dynamic()` for runtime-constructed keys:
+
+```tsx
+import { useT } from "./i18n-labels";
+
+// First define labels with possible keys:
+const labels = defineI18nLabels({
+  en: {
+    "employees.STAFF": "Staff",
+    "employees.MANAGER": "Manager",
+    "employees.ADMIN": "Admin",
+  },
+  ja: {
+    "employees.STAFF": "スタッフ",
+    "employees.MANAGER": "マネージャー",
+    "employees.ADMIN": "管理者",
+  },
+});
+
+const EmployeeType = ({ type }: { type: string }) => {
+  const t = useT();
+  
+  return (
+    <div>
+      {/* Dynamic key resolution with fallback */}
+      <p>Type: {t.dynamic(`employees.${type}`, "Unknown")}</p>
+    </div>
+  );
+};
+```
+
+### Using in Module/Resource Definitions
+
+```tsx
+import { defineModule, defineResource } from "@tailor-platform/app-shell";
+import { labels } from "./i18n-labels";
+
+const dashboardModule = defineModule({
+  path: "dashboard",
+  meta: {
+    // Static label for meta.title
+    title: labels.t("dashboardTitle"),
+  },
+  component: DashboardPage,
+  resources: [
+    defineResource({
+      path: "settings",
+      meta: {
+        // Labels are resolved based on current locale
+        title: labels.t("settingsTitle"),
+      },
+      component: SettingsPage,
+    })
+  ],
+});
+```
+
+### Multiple Locales
+
+```tsx
+import { defineI18nLabels } from "@tailor-platform/app-shell";
+
+export const labels = defineI18nLabels({
+  en: {
+    save: "Save",
+    cancel: "Cancel",
+    delete: "Delete",
+  },
+  ja: {
+    save: "保存",
+    cancel: "キャンセル",
+    delete: "削除",
+  },
+  fr: {
+    save: "Enregistrer",
+    cancel: "Annuler",
+    delete: "Supprimer",
+  },
+  de: {
+    save: "Speichern",
+    cancel: "Abbrechen",
+    delete: "Löschen",
+  },
+});
+
+export const useT = labels.useT;
+```
+
+### Complete Example
+
+```tsx
+// i18n-labels.ts
+import { defineI18nLabels } from "@tailor-platform/app-shell";
+
+export const labels = defineI18nLabels({
+  en: {
+    // Static labels
+    appTitle: "Product Management",
+    orders: "Orders",
+    products: "Products",
+    
+    // Dynamic labels
+    welcomeMessage: (props: { name: string }) => `Welcome, ${props.name}!`,
+    orderCount: (props: { count: number }) => 
+      props.count === 1 ? "1 order" : `${props.count} orders`,
+  },
+  ja: {
+    appTitle: "製品管理",
+    orders: "注文",
+    products: "製品",
+    
+    welcomeMessage: (props: { name: string }) => `ようこそ、${props.name}さん!`,
+    orderCount: (props: { count: number }) => `${props.count}件の注文`,
+  },
+});
+
+export const useT = labels.useT;
+
+// app.tsx
+import { AppShell, defineModule } from "@tailor-platform/app-shell";
+import { labels, useT } from "./i18n-labels";
+
+const modules = [
+  defineModule({
+    path: "orders",
+    meta: {
+      title: labels.t("orders"),
+    },
+    component: ({ title }) => {
+      const t = useT();
+      return (
+        <div>
+          <h1>{title}</h1>
+          <p>{t("welcomeMessage", { name: "John" })}</p>
+          <p>{t("orderCount", { count: 5 })}</p>
+        </div>
+      );
+    },
+    resources: [],
+  }),
+];
+
+const App = () => (
+  <AppShell modules={modules} locale="en">
+    <SidebarLayout />
+  </AppShell>
+);
+```
+
+## TypeScript Types
+
+```typescript
+// Label value can be either static or dynamic
+type LabelValue = string | ((props: any) => string);
+
+// I18n labels structure
+type I18nLabels<
+  Def extends Record<string, LabelValue>,
+  L extends string
+> = {
+  en: Def;
+} & { [K in L]: LabelDefinition<Def> } & DynamicLocales<Def>;
+
+// Ensures other locales match the base definition
+type LabelDefinition<Def extends Record<string, LabelValue>> = {
+  [K in keyof Def]: Def[K] extends (props: infer P) => string
+    ? (props: P) => string
+    : string;
+};
+
+// Translator function type
+type TFunction = (<K extends keyof Def>(
+  key: K,
+  ...args: TFunctionArgs<K>
+) => string) & {
+  dynamic: (key: string, fallback: string) => string;
+};
+```
+
+## Notes
+
+- The `en` locale is required and serves as the fallback
+- All locales must have the same label keys as the `en` locale
+- For dynamic labels (functions), the props type must match across all locales
+- The browser's language preference is automatically detected to select the appropriate locale
+- Falls back to `en` if the detected locale is not defined
+- When using dynamic labels with props in `meta.title`, the props are bound at definition time, not at render time
+
+## Related
+
+- [defineModule](/api/define-module) - Use labels in module titles
+- [defineResource](/api/define-resource) - Use labels in resource titles
+- [AppShell](/components/app-shell) - Configure locale for the application

@@ -1,0 +1,453 @@
+---
+title: Guards & Permissions
+description: Control access to pages and features with route guards
+---
+
+Route guards let you control who can access different parts of your application. They're perfect for implementing role-based access control, feature flags, and authentication requirements.
+
+## What Are Guards?
+
+Guards are functions that run before a page renders. They can:
+- **Allow access** with `pass()`
+- **Block access** with `hidden()` (shows 404)
+- **Redirect** with `redirectTo(path)`
+
+Guards execute in order and stop at the first non-pass result.
+
+## Basic Guard Syntax
+
+```tsx
+import { type Guard, pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+type GuardContext = {
+  context: ContextData;  // Custom data from AppShell
+};
+
+const myGuard: Guard = ({ context }) => {
+  // Your logic here
+  return pass();  // or hidden() or redirectTo("/path")
+};
+```
+
+## Common Guard Patterns
+
+### Authentication Guard
+
+Redirect unauthenticated users to login:
+
+```tsx
+import { redirectTo, pass } from "@tailor-platform/app-shell";
+
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");
+  }
+  return pass();
+};
+
+// Apply to a module
+const dashboardModule = defineModule({
+  path: "dashboard",
+  component: DashboardPage,
+  guards: [requireAuth],
+  resources: [...],
+});
+```
+
+### Role-Based Access Control
+
+Hide pages from users without proper roles:
+
+```tsx
+import { hidden, pass } from "@tailor-platform/app-shell";
+
+const requireAdmin: Guard = ({ context }) => {
+  if (context.currentUser?.role !== "admin") {
+    return hidden();  // Shows 404 for non-admins
+  }
+  return pass();
+};
+
+const adminModule = defineModule({
+  path: "admin",
+  meta: { title: "Admin Panel" },
+  component: AdminDashboard,
+  guards: [requireAdmin],
+  resources: [...],
+});
+```
+
+<Note>
+When a guard returns `hidden()`, the page shows a 404 error and doesn't appear in navigation. This prevents unauthorized users from knowing the page exists.
+</Note>
+
+### Feature Flag Guard
+
+Hide features that aren't enabled:
+
+```tsx
+const requireFeature = (featureName: string): Guard => {
+  return ({ context }) => {
+    if (!context.featureFlags[featureName]) {
+      return hidden();
+    }
+    return pass();
+  };
+};
+
+const reportsModule = defineModule({
+  path: "reports",
+  component: ReportsPage,
+  guards: [requireFeature("advancedReports")],
+  resources: [...],
+});
+```
+
+## Setting Up Context Data
+
+Guards access data through the `context` parameter. Here's how to set it up:
+
+<Steps>
+
+<Step title="Define Context Type">
+
+Create a type definition file:
+
+```typescript
+// types/app-shell.d.ts
+declare module "@tailor-platform/app-shell" {
+  interface AppShellRegister {
+    contextData: {
+      currentUser: {
+        id: string;
+        email: string;
+        role: "admin" | "staff" | "viewer";
+      } | null;
+      featureFlags: {
+        advancedReports: boolean;
+        betaFeatures: boolean;
+      };
+    };
+  }
+}
+```
+
+</Step>
+
+<Step title="Pass Context to AppShell">
+
+Provide the context data when initializing AppShell:
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const App = () => {
+  const currentUser = useCurrentUser();
+  const featureFlags = useFeatureFlags();
+
+  return (
+    <AppShell
+      title="My App"
+      modules={modules}
+      contextData={{
+        currentUser,
+        featureFlags,
+      }}
+    >
+      <SidebarLayout />
+    </AppShell>
+  );
+};
+```
+
+</Step>
+
+<Step title="Access in Guards">
+
+Now your guards are fully type-safe:
+
+```tsx
+const requireAdmin: Guard = ({ context }) => {
+  // TypeScript knows about currentUser.role
+  if (context.currentUser?.role !== "admin") {
+    return hidden();
+  }
+  return pass();
+};
+```
+
+</Step>
+
+</Steps>
+
+## Real-World Example: Admin-Only Page
+
+Here's a complete working example from the App Shell source code:
+
+```tsx
+import {
+  defineModule,
+  defineResource,
+  type Guard,
+  pass,
+  hidden,
+} from "@tailor-platform/app-shell";
+import { Shield } from "lucide-react";
+
+// Step 1: Define the guard
+const adminOnlyGuard: Guard = ({ context }) => {
+  if (context.role !== "admin") {
+    return hidden();
+  }
+  return pass();
+};
+
+// Step 2: Create the admin-only resource
+const adminResource = defineResource({
+  path: "admin-only",
+  meta: {
+    title: "Admin Only",
+    icon: <Shield />,
+  },
+  guards: [adminOnlyGuard],
+  component: () => (
+    <div style={{ padding: "1.5rem" }}>
+      <h1>Admin Only Page</h1>
+      <p>This page is only visible to administrators.</p>
+    </div>
+  ),
+});
+
+// Step 3: Add to a module
+const settingsModule = defineModule({
+  path: "settings",
+  meta: { title: "Settings" },
+  component: SettingsPage,
+  resources: [adminResource],
+});
+```
+
+**Behavior:**
+- Admin users see the page in navigation and can access it
+- Non-admin users don't see it in navigation
+- Direct URL access shows 404 for non-admins
+
+## Chaining Multiple Guards
+
+Guards execute in order. Use this for complex access control:
+
+```tsx
+const requireAuthAndAdmin: Guard[] = [
+  // First, check authentication
+  ({ context }) => {
+    if (!context.currentUser) {
+      return redirectTo("/login");
+    }
+    return pass();
+  },
+  // Then, check admin role
+  ({ context }) => {
+    if (context.currentUser.role !== "admin") {
+      return hidden();
+    }
+    return pass();
+  },
+];
+
+const secureModule = defineModule({
+  path: "secure",
+  guards: requireAuthAndAdmin,
+  component: SecurePage,
+  resources: [...],
+});
+```
+
+<Tip>
+Guards stop at the first non-pass result. In this example, unauthenticated users are redirected before the role check runs.
+</Tip>
+
+## Guards on Resources
+
+Apply guards to individual resources:
+
+```tsx
+const settingsModule = defineModule({
+  path: "settings",
+  component: SettingsPage,
+  resources: [
+    // Public resource
+    defineResource({
+      path: "profile",
+      component: ProfilePage,
+    }),
+    // Admin-only resource
+    defineResource({
+      path: "billing",
+      guards: [requireAdmin],
+      component: BillingPage,
+    }),
+  ],
+});
+```
+
+## Controlling UI Elements with WithGuard
+
+Use the `WithGuard` component to conditionally render UI elements based on the same guard logic:
+
+```tsx
+import { WithGuard, DefaultSidebar } from "@tailor-platform/app-shell";
+
+const CustomSidebar = () => (
+  <DefaultSidebar>
+    <SidebarItem to="/dashboard" />
+    
+    {/* Only show for admins */}
+    <WithGuard guards={[requireAdmin]}>
+      <SidebarItem to="/admin" />
+    </WithGuard>
+    
+    {/* Show upgrade prompt for non-admins */}
+    <WithGuard 
+      guards={[requireAdmin]} 
+      fallback={<UpgradePrompt />}
+    >
+      <SidebarItem to="/premium-features" />
+    </WithGuard>
+  </DefaultSidebar>
+);
+```
+
+<Warning>
+`WithGuard` only supports `pass()` and `hidden()`. It does not support `redirectTo()`. For redirects, use route-level guards.
+</Warning>
+
+## Async Guards
+
+Guards can be asynchronous for checking permissions from an API:
+
+```tsx
+const checkPermission: Guard = async ({ context }) => {
+  const hasAccess = await context.apiClient.checkAccess("admin-panel");
+  
+  if (!hasAccess) {
+    return hidden();
+  }
+  return pass();
+};
+
+const adminModule = defineModule({
+  path: "admin",
+  guards: [checkPermission],
+  component: AdminPage,
+  resources: [...],
+});
+```
+
+<Note>
+App Shell automatically shows a loading state while async guards execute.
+</Note>
+
+## Default Redirects
+
+Redirect module landing pages to a default resource:
+
+```tsx
+import { redirectTo } from "@tailor-platform/app-shell";
+
+const reportsModule = defineModule({
+  path: "reports",
+  meta: { title: "Reports" },
+  // No component - redirect to first report
+  guards: [() => redirectTo("/reports/sales")],
+  resources: [
+    defineResource({
+      path: "sales",
+      component: SalesReport,
+    }),
+    defineResource({
+      path: "inventory",
+      component: InventoryReport,
+    }),
+  ],
+});
+```
+
+## Testing Guards
+
+Test guards by simulating different context values:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { requireAdmin } from "./guards";
+
+describe("requireAdmin guard", () => {
+  it("allows admin users", () => {
+    const result = requireAdmin({
+      context: { currentUser: { role: "admin" } },
+    });
+    expect(result).toEqual({ type: "pass" });
+  });
+
+  it("blocks non-admin users", () => {
+    const result = requireAdmin({
+      context: { currentUser: { role: "staff" } },
+    });
+    expect(result).toEqual({ type: "hidden" });
+  });
+
+  it("blocks unauthenticated users", () => {
+    const result = requireAdmin({
+      context: { currentUser: null },
+    });
+    expect(result).toEqual({ type: "hidden" });
+  });
+});
+```
+
+## Best Practices
+
+### Security
+
+- **Never trust client-side guards alone** - Always verify permissions on your backend
+- Guards only hide UI elements; backend validation is essential
+- Use `hidden()` for sensitive features to avoid information disclosure
+
+### Organization
+
+- Keep guards in a separate `guards.ts` file
+- Create reusable guard factories for common patterns
+- Document what each guard protects and why
+
+```tsx
+// guards.ts
+export const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) return redirectTo("/login");
+  return pass();
+};
+
+export const requireRole = (role: string): Guard => ({
+  context,
+}) => {
+  if (context.currentUser?.role !== role) return hidden();
+  return pass();
+};
+
+export const requireFeature = (flag: string): Guard => ({
+  context,
+}) => {
+  if (!context.featureFlags[flag]) return hidden();
+  return pass();
+};
+```
+
+### Performance
+
+- Keep guards fast - they run on every navigation
+- Cache permission checks when possible
+- Use async guards sparingly (they add loading time)
+
+## Related Resources
+
+- [API Reference: Guards](/api-reference/guards)
+- [API Reference: WithGuard](/api-reference/withguard)
+- [Building Your First App](/guides/building-your-first-app)

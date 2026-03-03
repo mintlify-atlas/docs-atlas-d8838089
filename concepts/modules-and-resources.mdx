@@ -1,0 +1,311 @@
+---
+title: Modules and resources
+description: Learn how to structure your application using AppShell's module and resource architecture
+---
+
+AppShell organizes your application into a hierarchical structure of **modules** and **resources**. This architecture automatically generates sidebar navigation, breadcrumbs, and handles routing based on your structured configuration.
+
+## Core concepts
+
+Both modules and resources share a common interface with these key properties:
+
+- **`path`** - The URL segment for this page
+- **`component`** - The React component to render when navigating to this route
+- **`guards`** - Optional access control functions based on permissions or feature flags
+- **`meta`** - Metadata like title and icon for navigation
+
+### Modules vs resources
+
+| Aspect | Module | Resource |
+|--------|--------|----------|
+| Navigation | Top-level sidebar items | Sub-items under modules |
+| Nesting | Contains resources | Contains sub-resources |
+| Component | Optional (auto-redirects to first resource) | Required |
+| Icon | Recommended for visual navigation | Optional |
+
+## Basic example
+
+Here's a simple application structure with two modules:
+
+```tsx
+import { defineModule, defineResource } from "@tailor-platform/app-shell";
+
+const modules = [
+  defineModule({
+    path: "purchasing",
+    component: PurchasingLandingPage,
+    meta: {
+      title: "Purchasing",
+      icon: <ShoppingCart />,
+    },
+    resources: [
+      defineResource({
+        path: "orders",
+        component: OrdersPage,
+        meta: { title: "Orders" },
+        subResources: [
+          defineResource({
+            path: ":id",
+            component: OrderDetailPage,
+            meta: { title: "Order Details" },
+          }),
+        ],
+      }),
+      defineResource({
+        path: "invoices",
+        component: PurchaseInvoicesPage,
+        meta: { title: "Invoices" },
+      }),
+    ],
+  }),
+  defineModule({
+    path: "sales",
+    component: SalesLandingPage,
+    meta: {
+      title: "Sales",
+      icon: <TrendingUp />,
+    },
+    resources: [
+      defineResource({
+        path: "invoices",
+        component: SalesInvoicesPage,
+        meta: { title: "Invoices" },
+      }),
+    ],
+  }),
+];
+```
+
+This configuration produces the following navigation:
+
+```
+› Purchasing
+  - Orders
+  - Invoices
+› Sales
+  - Invoices
+```
+
+## URL structure
+
+The hierarchy directly maps to URLs:
+
+| Navigation Path | URL | Component |
+|-----------------|-----|----------|
+| Purchasing | `/purchasing` | `PurchasingLandingPage` |
+| Purchasing > Orders | `/purchasing/orders` | `OrdersPage` |
+| (Direct link) | `/purchasing/orders/1234` | `OrderDetailPage` |
+| Sales > Invoices | `/sales/invoices` | `SalesInvoicesPage` |
+
+<Note>
+Sub-resources (like `:id`) don't appear in the sidebar navigation but are accessible via direct links and will show in breadcrumbs.
+</Note>
+
+## Modules without components
+
+Modules can omit the `component` property to automatically redirect to their first resource:
+
+```tsx
+defineModule({
+  path: "dashboard",
+  meta: { title: "Dashboard" },
+  resources: [
+    defineResource({
+      path: "overview",
+      component: DashboardOverview,
+      meta: { title: "Overview" },
+    }),
+    defineResource({
+      path: "analytics",
+      component: DashboardAnalytics,
+      meta: { title: "Analytics" },
+    }),
+  ],
+})
+```
+
+Navigating to `/dashboard` automatically redirects to `/dashboard/overview`.
+
+## Dynamic parameters
+
+Use React Router's `:param` syntax for dynamic URL segments:
+
+```tsx
+defineResource({
+  path: ":id",
+  component: OrderDetailPage,
+  meta: { title: "Order Details" },
+})
+```
+
+Access parameters in your component:
+
+```tsx
+import { useParams } from "@tailor-platform/app-shell";
+
+const OrderDetailPage = () => {
+  const { id } = useParams();
+  return <div>Order ID: {id}</div>;
+};
+```
+
+## Route guards
+
+Guards control access to modules and resources based on custom logic. They execute in order and provide semantic results: `pass()`, `hidden()`, or `redirectTo()`.
+
+### Permission-based access
+
+```tsx
+import { defineModule, pass, hidden } from "@tailor-platform/app-shell";
+
+defineModule({
+  path: "reports",
+  component: ReportsPage,
+  meta: { title: "Reports" },
+  resources: [reportsListResource],
+  guards: [
+    async ({ context }) => {
+      const hasPermission = await checkPermission("reports:view");
+      return hasPermission ? pass() : hidden();
+    }
+  ],
+})
+```
+
+### Feature flag based
+
+```tsx
+import { pass, hidden } from "@tailor-platform/app-shell";
+
+defineModule({
+  path: "beta",
+  component: BetaFeaturesPage,
+  meta: { title: "Beta Features" },
+  resources: [newFeatureResource],
+  guards: [
+    async ({ context }) => {
+      const enabled = await checkFeatureFlag("beta-features");
+      return enabled ? pass() : hidden();
+    }
+  ],
+})
+```
+
+### Redirect to login
+
+```tsx
+import { pass, redirectTo } from "@tailor-platform/app-shell";
+
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");
+  }
+  return pass();
+};
+
+defineResource({
+  path: "settings",
+  component: SettingsPage,
+  guards: [requireAuth],
+})
+```
+
+### Reusable guards
+
+Create composable guards for complex access logic:
+
+```tsx
+import { type Guard, pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+// Define reusable guards
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");
+  }
+  return pass();
+};
+
+const requireAdmin: Guard = ({ context }) => {
+  if (context.currentUser?.role !== "admin") {
+    return hidden();
+  }
+  return pass();
+};
+
+// Compose multiple guards
+defineResource({
+  path: "admin/users",
+  component: AdminUsersPage,
+  guards: [requireAuth, requireAdmin],
+})
+```
+
+<Note>
+Guards are executed in order. The first non-`pass()` result stops execution and determines the access outcome.
+</Note>
+
+## Guard behavior
+
+When a module or resource is hidden via guards:
+
+- It won't appear in navigation menus
+- It won't be accessible via direct URL navigation (shows 404)
+- It won't appear in CommandPalette search results
+
+## Component props
+
+Both module and resource components receive props from AppShell:
+
+```tsx
+import { ResourceComponentProps } from "@tailor-platform/app-shell";
+
+const MyModulePage = (props: ResourceComponentProps) => {
+  return (
+    <div>
+      <h1>{props.title}</h1>
+      {/* props.icon is also available */}
+      {/* props.resources contains child resources */}
+    </div>
+  );
+};
+```
+
+## Error boundaries
+
+Define custom error handling at the module or resource level:
+
+```tsx
+import { useRouteError } from "@tailor-platform/app-shell";
+
+const MyErrorBoundary = () => {
+  const error = useRouteError() as Error;
+  return (
+    <div>
+      <h1>Something went wrong</h1>
+      <p>{error.message}</p>
+    </div>
+  );
+};
+
+defineModule({
+  path: "reports",
+  component: ReportsPage,
+  resources: [...],
+  errorBoundary: <MyErrorBoundary />,
+})
+```
+
+<Info>
+Resource-level error boundaries override module-level boundaries, which override the global error boundary set in `<AppShell>`.
+</Info>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Routing and navigation" icon="route" href="/concepts/routing-navigation">
+    Learn about client-side navigation and route helpers
+  </Card>
+  <Card title="File-based routing" icon="folder-tree" href="/concepts/file-based-routing">
+    Use directory structure instead of explicit definitions
+  </Card>
+</CardGroup>

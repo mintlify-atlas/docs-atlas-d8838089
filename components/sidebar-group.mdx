@@ -1,0 +1,220 @@
+---
+title: SidebarGroup
+description: A collapsible group component for organizing sidebar navigation items
+---
+
+A collapsible group for organizing navigation items in the sidebar. Supports nested groups, clickable headers, and internationalization.
+
+## Import
+
+```tsx
+import { SidebarGroup } from "@tailor-platform/app-shell";
+```
+
+## Usage
+
+### Basic group
+
+```tsx
+import { SidebarGroup, SidebarItem } from "@tailor-platform/app-shell";
+import { Package } from "lucide-react";
+
+<SidebarGroup title="Products" icon={<Package />}>
+  <SidebarItem to="/products/all" />
+  <SidebarItem to="/products/categories" />
+</SidebarGroup>
+```
+
+### Clickable group header
+
+When you specify a `to` prop, the group title becomes a clickable link:
+
+```tsx
+import { Settings } from "lucide-react";
+
+<SidebarGroup title="Settings" icon={<Settings />} to="/settings">
+  <SidebarItem to="/settings/profile" />
+  <SidebarItem to="/settings/security" />
+</SidebarGroup>
+```
+
+### Initially collapsed
+
+Control the initial expanded state with `defaultOpen`:
+
+```tsx
+<SidebarGroup title="Archives" defaultOpen={false}>
+  <SidebarItem to="/archives/2024" />
+  <SidebarItem to="/archives/2023" />
+</SidebarGroup>
+```
+
+### Nested groups
+
+You can nest `SidebarGroup` components for hierarchical navigation:
+
+```tsx
+import { Package } from "lucide-react";
+
+<SidebarGroup title="Products" icon={<Package />}>
+  <SidebarItem to="/products/all" />
+  <SidebarGroup title="Archives" defaultOpen={false}>
+    <SidebarItem to="/products/archives/2024" />
+    <SidebarItem to="/products/archives/2023" />
+  </SidebarGroup>
+</SidebarGroup>
+```
+
+## Props
+
+<ParamField path="title" type="LocalizedString" required>
+  Group title. Supports internationalization via `LocalizedString`.
+</ParamField>
+
+<ParamField path="icon" type="ReactNode">
+  Group icon displayed next to the title.
+</ParamField>
+
+<ParamField path="to" type="string">
+  When specified, the title becomes a clickable link to this URL.
+</ParamField>
+
+<ParamField path="defaultOpen" type="boolean" default="true">
+  Initial expanded state. Set to `false` to render the group collapsed by default.
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  Child items - typically `SidebarItem`, nested `SidebarGroup`, or `SidebarSeparator` components.
+</ParamField>
+
+## Internationalization
+
+Group titles support localized strings using `defineI18nLabels`:
+
+```tsx
+import { defineI18nLabels, SidebarGroup } from "@tailor-platform/app-shell";
+import { Package } from "lucide-react";
+
+const labels = defineI18nLabels({
+  en: { products: "Products" },
+  ja: { products: "製品" },
+});
+
+<SidebarGroup title={labels.t("products")} icon={<Package />}>
+  <SidebarItem to="/products/all" />
+</SidebarGroup>
+```
+
+You can also pass a plain string:
+
+```tsx
+<SidebarGroup title="Products" icon={<Package />}>
+  <SidebarItem to="/products/all" />
+</SidebarGroup>
+```
+
+## Examples
+
+### Multi-level navigation
+
+```tsx
+import {
+  DefaultSidebar,
+  SidebarGroup,
+  SidebarItem,
+  SidebarSeparator,
+} from "@tailor-platform/app-shell";
+import { Package, Settings, Shield } from "lucide-react";
+
+const CustomSidebar = () => (
+  <DefaultSidebar>
+    <SidebarItem to="/dashboard" />
+    <SidebarSeparator />
+    
+    <SidebarGroup title="Products" icon={<Package />}>
+      <SidebarItem to="/products/all" />
+      <SidebarItem to="/products/categories" />
+      <SidebarGroup title="Archives" defaultOpen={false}>
+        <SidebarItem to="/products/archives/2024" />
+        <SidebarItem to="/products/archives/2023" />
+      </SidebarGroup>
+    </SidebarGroup>
+    
+    <SidebarGroup title="Settings" icon={<Settings />} to="/settings">
+      <SidebarItem to="/settings/profile" />
+      <SidebarItem to="/settings/security" />
+    </SidebarGroup>
+  </DefaultSidebar>
+);
+```
+
+### With access control
+
+Combine with `WithGuard` to conditionally show groups based on permissions:
+
+```tsx
+import { WithGuard, pass, hidden } from "@tailor-platform/app-shell";
+import { Shield } from "lucide-react";
+
+const isAdminGuard = ({ context }) =>
+  context.currentUser.role === "admin" ? pass() : hidden();
+
+<DefaultSidebar>
+  <SidebarItem to="/dashboard" />
+  
+  <WithGuard guards={[isAdminGuard]}>
+    <SidebarGroup title="Admin" icon={<Shield />}>
+      <SidebarItem to="/admin/users" />
+      <SidebarItem to="/admin/settings" />
+    </SidebarGroup>
+  </WithGuard>
+</DefaultSidebar>
+```
+
+### Internationalized navigation
+
+```tsx
+import { defineI18nLabels } from "@tailor-platform/app-shell";
+
+const labels = defineI18nLabels({
+  en: {
+    products: "Products",
+    allProducts: "All Products",
+    categories: "Categories",
+    settings: "Settings",
+    profile: "Profile",
+    security: "Security",
+  },
+  ja: {
+    products: "製品",
+    allProducts: "すべての製品",
+    categories: "カテゴリ",
+    settings: "設定",
+    profile: "プロフィール",
+    security: "セキュリティ",
+  },
+});
+
+<DefaultSidebar>
+  <SidebarGroup title={labels.t("products")} icon={<Package />}>
+    <SidebarItem to="/products/all" title={labels.t("allProducts")} />
+    <SidebarItem to="/products/categories" title={labels.t("categories")} />
+  </SidebarGroup>
+  
+  <SidebarGroup 
+    title={labels.t("settings")} 
+    icon={<Settings />} 
+    to="/settings"
+  >
+    <SidebarItem to="/settings/profile" title={labels.t("profile")} />
+    <SidebarItem to="/settings/security" title={labels.t("security")} />
+  </SidebarGroup>
+</DefaultSidebar>
+```
+
+## Related Components
+
+- [SidebarItem](/components/sidebar-item) - Navigation item for the sidebar
+- [SidebarLayout](/components/sidebar-layout) - Main sidebar container with DefaultSidebar
+- [WithGuard](/components/with-guard) - Conditional rendering based on guards
+- [defineI18nLabels](/api/define-i18n-labels) - Define internationalized labels

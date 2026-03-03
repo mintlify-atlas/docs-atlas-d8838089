@@ -1,0 +1,402 @@
+---
+title: CommandPalette
+description: Keyboard-driven quick navigation component for searching and navigating between pages
+---
+
+## Overview
+
+The `CommandPalette` component provides a searchable command palette interface for quick navigation throughout your application. It's triggered by keyboard shortcuts and supports fuzzy search across all accessible pages.
+
+## Features
+
+- **Global Keyboard Shortcut**: `Cmd+K` (Mac) / `Ctrl+K` (Windows/Linux)
+- **Fuzzy Search**: Search by page title or path
+- **Keyboard Navigation**: Arrow keys and Enter for selection
+- **Hierarchical Display**: Shows breadcrumb paths for nested resources
+- **Access Control**: Automatically respects route guards and permissions
+- **Internationalization**: Supports English and Japanese locales
+
+## Props
+
+The `CommandPalette` component has no props. It automatically reads module configurations from the `AppShell` context.
+
+## Usage
+
+### Basic Setup
+
+Simply add `CommandPalette` alongside `SidebarLayout` as a child of `AppShell`:
+
+```tsx
+import { 
+  AppShell, 
+  SidebarLayout, 
+  CommandPalette 
+} from "@tailor-platform/app-shell";
+
+const App = () => (
+  <AppShell modules={modules}>
+    <>
+      <SidebarLayout />
+      <CommandPalette />
+    </>
+  </AppShell>
+);
+```
+
+### With Locale Configuration
+
+```tsx
+import { 
+  AppShell, 
+  SidebarLayout, 
+  CommandPalette 
+} from "@tailor-platform/app-shell";
+
+const App = () => (
+  <AppShell modules={modules} locale="ja">
+    <>
+      <SidebarLayout />
+      <CommandPalette />
+    </>
+  </AppShell>
+);
+```
+
+## User Experience
+
+### Opening the Palette
+
+Users can open the command palette by:
+- Pressing `Cmd+K` on macOS
+- Pressing `Ctrl+K` on Windows/Linux
+- Pressing the shortcut again to toggle close
+
+### Searching
+
+1. Type to search for pages by title or path
+2. Results update in real-time as you type
+3. Fuzzy matching helps find pages even with typos
+
+### Navigation
+
+- **Arrow Down**: Move to next result
+- **Arrow Up**: Move to previous result
+- **Enter**: Navigate to selected page
+- **Escape**: Close the palette
+
+### Result Display
+
+Each result shows:
+- **Breadcrumb path**: Module > Resource > Sub-resource hierarchy
+- **URL path**: The actual route path
+
+Example:
+```
+Products > All Products > Electronics
+/products/all/electronics
+```
+
+## Search Behavior
+
+### Fuzzy Matching
+
+The search uses fuzzy matching to find pages:
+
+- "prod" matches "Products"
+- "orddet" matches "Order Details"
+- "set gen" matches "Settings > General"
+
+### Breadcrumb Search
+
+Search across the full breadcrumb path:
+
+```tsx
+// Searching "products electronics" will find:
+// Products > All Products > Electronics
+```
+
+### Path Search
+
+Search by URL paths:
+
+```tsx
+// Searching "/orders" will find:
+// Dashboard > Orders (/dashboard/orders)
+```
+
+## Access Control
+
+The command palette automatically respects route guards:
+
+```tsx
+import { defineModule, pass, hidden } from "@tailor-platform/app-shell";
+
+const adminModule = defineModule({
+  path: "admin",
+  meta: { title: "Admin" },
+  component: AdminPage,
+  guards: [
+    ({ context }) => {
+      return context.currentUser?.role === "admin" ? pass() : hidden();
+    }
+  ],
+  resources: [...]
+});
+
+// Non-admin users won't see "Admin" in command palette results
+```
+
+## Advanced Usage
+
+### Custom Hook: useCommandPalette
+
+For building custom command palette UIs, use the `useCommandPalette` hook:
+
+```tsx
+import { useCommandPalette } from "@tailor-platform/app-shell";
+
+const MyCustomPalette = ({ routes }) => {
+  const {
+    open,
+    handleOpenChange,
+    search,
+    setSearch,
+    selectedIndex,
+    filteredRoutes,
+    handleSelect,
+    handleKeyDown,
+    listRef,
+  } = useCommandPalette({ routes });
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {/* Custom UI implementation */}
+    </Dialog>
+  );
+};
+```
+
+### UseCommandPaletteOptions
+
+<ParamField path="routes" type="Array<NavigatableRoute>" required>
+  Array of routes to search through. Each route has:
+  - `path`: URL path
+  - `title`: Page title
+  - `icon`: Optional icon
+  - `breadcrumb`: Array of parent titles
+</ParamField>
+
+### UseCommandPaletteReturn
+
+<ParamField path="open" type="boolean">
+  Whether the palette is currently open
+</ParamField>
+
+<ParamField path="handleOpenChange" type="(open: boolean) => void">
+  Function to control palette visibility
+</ParamField>
+
+<ParamField path="search" type="string">
+  Current search query
+</ParamField>
+
+<ParamField path="setSearch" type="(search: string) => void">
+  Function to update search query
+</ParamField>
+
+<ParamField path="selectedIndex" type="number">
+  Index of currently selected result
+</ParamField>
+
+<ParamField path="filteredRoutes" type="Array<NavigatableRoute>">
+  Filtered and sorted search results
+</ParamField>
+
+<ParamField path="handleSelect" type="(route: NavigatableRoute) => void">
+  Function to navigate to a selected route
+</ParamField>
+
+<ParamField path="handleKeyDown" type="(e: React.KeyboardEvent) => void">
+  Keyboard event handler for arrow keys and Enter
+</ParamField>
+
+<ParamField path="listRef" type="React.RefObject<HTMLDivElement | null>">
+  Ref for the results list container (for scroll management)
+</ParamField>
+
+## Helper Functions
+
+### navItemsToRoutes
+
+Converts navigation items (with access control) to navigable routes:
+
+```tsx
+import { navItemsToRoutes } from "@tailor-platform/app-shell";
+
+const routes = navItemsToRoutes(navItems);
+// Returns: Array<NavigatableRoute>
+```
+
+## Internationalization
+
+The command palette uses locale-aware strings:
+
+- **Search placeholder**: "Search..." (en) / "検索..." (ja)
+- **No results**: "No results found" (en) / "結果が見つかりません" (ja)
+
+Set the locale via `AppShell`:
+
+```tsx
+<AppShell modules={modules} locale="ja">
+  <>
+    <SidebarLayout />
+    <CommandPalette />
+  </>
+</AppShell>
+```
+
+## TypeScript
+
+### NavigatableRoute Type
+
+```typescript
+type NavigatableRoute = {
+  path: string;
+  title: string;
+  icon?: React.ReactNode;
+  breadcrumb: Array<string>;
+};
+```
+
+### UseCommandPaletteOptions Type
+
+```typescript
+type UseCommandPaletteOptions = {
+  routes: Array<NavigatableRoute>;
+};
+```
+
+### UseCommandPaletteReturn Type
+
+```typescript
+type UseCommandPaletteReturn = {
+  open: boolean;
+  handleOpenChange: (open: boolean) => void;
+  search: string;
+  setSearch: (search: string) => void;
+  selectedIndex: number;
+  filteredRoutes: Array<NavigatableRoute>;
+  handleSelect: (route: NavigatableRoute) => void;
+  handleKeyDown: (e: React.KeyboardEvent) => void;
+  listRef: React.RefObject<HTMLDivElement | null>;
+};
+```
+
+## Styling
+
+The command palette uses Tailwind CSS with the `astw:` prefix. Customize appearance through CSS variables:
+
+```css
+:root {
+  --dialog-background: hsl(0 0% 100%);
+  --muted: hsl(210 40% 96%);
+  --accent: hsl(210 40% 96%);
+}
+
+.dark {
+  --dialog-background: hsl(222 47% 11%);
+  --muted: hsl(217 33% 17%);
+  --accent: hsl(217 33% 17%);
+}
+```
+
+## Accessibility
+
+- **Keyboard-first**: Fully navigable with keyboard
+- **Screen reader support**: Proper ARIA labels and roles
+- **Focus management**: Auto-focuses search input on open
+- **Scroll management**: Selected item automatically scrolls into view
+- **IME support**: Ignores key events during IME composition
+
+## Performance
+
+- **Suspense integration**: Loads navigation data asynchronously
+- **Memoized filtering**: Optimized search performance
+- **Lazy rendering**: Only renders when opened
+
+## Examples
+
+### Complete Implementation
+
+```tsx
+import { 
+  AppShell, 
+  SidebarLayout,
+  CommandPalette,
+  defineModule,
+  defineResource
+} from "@tailor-platform/app-shell";
+import { Package, Settings, BarChart } from "lucide-react";
+
+const modules = [
+  defineModule({
+    path: "products",
+    meta: { 
+      title: "Products",
+      icon: <Package /> 
+    },
+    resources: [
+      defineResource({
+        path: "all",
+        meta: { title: "All Products" },
+        component: AllProductsPage
+      }),
+      defineResource({
+        path: "categories",
+        meta: { title: "Categories" },
+        component: CategoriesPage
+      })
+    ]
+  }),
+  defineModule({
+    path: "reports",
+    meta: { 
+      title: "Reports",
+      icon: <BarChart /> 
+    },
+    resources: [
+      defineResource({
+        path: "sales",
+        meta: { title: "Sales Report" },
+        component: SalesReportPage
+      })
+    ]
+  })
+];
+
+const App = () => (
+  <AppShell 
+    title="ERP System"
+    modules={modules}
+    locale="en"
+  >
+    <>
+      <SidebarLayout />
+      <CommandPalette />
+    </>
+  </AppShell>
+);
+
+// Users can now:
+// - Press Cmd+K to open palette
+// - Search "prod" to find Products pages
+// - Navigate with arrow keys
+// - Press Enter to navigate
+```
+
+## See Also
+
+- [AppShell](/components/app-shell) - Root component configuration
+- [SidebarLayout](/components/sidebar-layout) - Default layout component
+- [Guards & Permissions](/guides/guards-permissions) - Access control for routes
+- [Internationalization](/guides/internationalization) - Multi-language support

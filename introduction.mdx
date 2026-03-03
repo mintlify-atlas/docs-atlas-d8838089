@@ -1,0 +1,108 @@
+---
+title: Introduction
+description: AppShell is an opinionated React application framework for creating applications on Tailor Platform with built-in authentication, routing, and beautiful UI components.
+---
+
+<Note>
+  AppShell gives you everything you need to build production-ready ERP applications on Tailor Platform with minimal configuration.
+</Note>
+
+## What is AppShell?
+
+AppShell is a React-based framework that provides the foundation for building custom ERP applications on Tailor Platform. It handles the complex infrastructure so you can focus on building business-level screens and features.
+
+### Key features
+
+<CardGroup cols={2}>
+  <Card title="Module-based routing" icon="route" href="/concepts/modules-and-resources">
+    Define routes through modules and resources instead of file-based routing. Automatic sidebar navigation and breadcrumbs.
+  </Card>
+  
+  <Card title="Built-in authentication" icon="lock" href="/concepts/authentication">
+    OAuth2/OIDC integration with Tailor Platform's Auth service. Supports any configured IdP including Google, Okta, and Auth0.
+  </Card>
+  
+  <Card title="Beautiful UI components" icon="palette" href="/components/app-shell">
+    Responsive layouts, description cards, command palette, and more. Built with Tailwind CSS v4 and shadcn/ui principles.
+  </Card>
+  
+  <Card title="ERP module integration" icon="plug" href="/installation">
+    Connect compatible ERP modules like PIM, SO, MO with automatic data provider to Tailor's application gateway.
+  </Card>
+</CardGroup>
+
+## Out of the box
+
+When you integrate AppShell into your React application, you get:
+
+- **Simple composition** - Compose custom Tailor-powered, React-based ERP applications with minimal code
+- **User authentication** - Complete OAuth2 flow with token management and session persistence
+- **Authorization** - Route guards for permission-based and role-based access control
+- **Module system** - Organize your app with modules and resources that auto-generate navigation
+- **Beautiful layouts** - Responsive, opinionated layouts with sidebar navigation and breadcrumbs
+- **Convenience hooks** - Access application, module, and user contexts with React hooks
+- **Data integration** - Automatic data provider to Tailor's application gateway
+
+## Requirements
+
+Before you start, make sure you have:
+
+- React 19+ (React 18+ is supported but React 19 is recommended)
+- Node 16 or higher
+- Basic knowledge of React and JavaScript/TypeScript
+
+## Quick example
+
+Here's a minimal AppShell application:
+
+<CodeGroup>
+```tsx App.tsx
+import { AppShell, SidebarLayout, defineModule } from "@tailor-platform/app-shell";
+
+const dashboardModule = defineModule({
+  path: "dashboard",
+  component: () => <h1>Welcome to AppShell!</h1>,
+  meta: {
+    title: "Dashboard",
+  },
+  resources: [],
+});
+
+const App = () => {
+  return (
+    <AppShell
+      title="My ERP App"
+      basePath="app"
+      modules={[dashboardModule]}
+    >
+      <SidebarLayout />
+    </AppShell>
+  );
+};
+
+export default App;
+```
+
+```css globals.css
+@import "@tailor-platform/app-shell/theme.css";
+@import "tailwindcss";
+```
+</CodeGroup>
+
+That's it! AppShell will:
+- Render your module in the sidebar navigation
+- Handle routing to `/app/dashboard`
+- Display breadcrumb navigation
+- Apply Tailor's design system
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Get up and running with AppShell in under 5 minutes
+  </Card>
+  
+  <Card title="Installation" icon="download" href="/installation">
+    Detailed installation guide with peer dependencies and configuration
+  </Card>
+</CardGroup>

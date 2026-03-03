@@ -1,0 +1,258 @@
+---
+title: hidden
+description: Deny access to a route and show a 404 Not Found page
+---
+
+`hidden()` is a helper function that returns a guard result indicating access should be denied with a 404 response.
+
+## Type Signature
+
+```typescript
+const hidden: () => GuardResult;
+
+type GuardResult = { type: "hidden" };
+```
+
+## Behavior
+
+When a guard returns `hidden()`:
+- **Route is inaccessible**: The route cannot be accessed via URL or navigation
+- **404 response**: A 404 Not Found error is thrown
+- **Guard chain stops**: Subsequent guards are not evaluated
+- **Hidden from navigation**: The route does not appear in sidebars or command palette
+- **No redirect**: The user stays on the current page or sees the error boundary
+
+## Basic Usage
+
+```tsx
+import { hidden } from "@tailor-platform/app-shell";
+
+const denyAccess: Guard = () => {
+  return hidden();
+};
+```
+
+## Conditional Access Control
+
+Most commonly used with conditional logic to hide routes from unauthorized users:
+
+```tsx
+import { pass, hidden } from "@tailor-platform/app-shell";
+
+const requireAdmin: Guard = ({ context }) => {
+  if (context.currentUser?.role === "admin") {
+    return pass();
+  }
+  return hidden();  // Non-admins see 404
+};
+
+defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [adminResources],
+  guards: [requireAdmin]
+});
+```
+
+## Common Use Cases
+
+### Role-Based Access
+
+```tsx
+import { type Guard, pass, hidden } from "@tailor-platform/app-shell";
+
+const requireRole = (role: string): Guard => {
+  return ({ context }) => {
+    if (context.currentUser?.role !== role) {
+      return hidden();  // Wrong role = 404
+    }
+    return pass();
+  };
+};
+
+defineResource({
+  path: "admin-settings",
+  component: AdminSettings,
+  guards: [requireRole("admin")]
+});
+```
+
+### Feature Flag
+
+Hide features that are disabled:
+
+```tsx
+import { type Guard, pass, hidden } from "@tailor-platform/app-shell";
+
+const requireFeature = (feature: string): Guard => {
+  return ({ context }) => {
+    if (!context.featureFlags[feature]) {
+      return hidden();  // Feature disabled = 404
+    }
+    return pass();
+  };
+};
+
+defineModule({
+  path: "beta",
+  component: BetaFeatures,
+  resources: [betaResources],
+  guards: [requireFeature("beta-access")]
+});
+```
+
+### Plan-Based Features
+
+Hide premium features from free users:
+
+```tsx
+import { type Guard, pass, hidden } from "@tailor-platform/app-shell";
+
+const requirePremium: Guard = ({ context }) => {
+  if (context.currentUser?.plan !== "premium") {
+    return hidden();  // Free users see 404
+  }
+  return pass();
+};
+
+defineResource({
+  path: "advanced-analytics",
+  component: AdvancedAnalytics,
+  guards: [requirePremium]
+});
+```
+
+### Permission-Based Access (Async)
+
+```tsx
+import { type Guard, pass, hidden } from "@tailor-platform/app-shell";
+
+const requirePermission = (permission: string): Guard => {
+  return async ({ context }) => {
+    const hasPermission = await context.apiClient.checkPermission(permission);
+    if (!hasPermission) {
+      return hidden();
+    }
+    return pass();
+  };
+};
+
+defineResource({
+  path: "sensitive-data",
+  component: SensitiveDataPage,
+  guards: [requirePermission("data.sensitive.view")]
+});
+```
+
+## When to Use `hidden()` vs `redirectTo()`
+
+### Use `hidden()` when:
+- The route should appear to not exist for unauthorized users
+- You want to prevent route discovery through URL guessing
+- The user should not know the feature exists (e.g., beta features, premium features)
+- Access is based on roles, permissions, or feature flags
+
+### Use `redirectTo()` when:
+- The user needs authentication (redirect to login)
+- You want to guide users to the correct page (e.g., redirect to dashboard)
+- The route exists but requires a specific state (e.g., onboarding incomplete)
+
+## Example: Combined Guards
+
+```tsx
+import { type Guard, pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");  // Redirect unauthenticated users
+  }
+  return pass();
+};
+
+const requireAdmin: Guard = ({ context }) => {
+  if (context.currentUser?.role !== "admin") {
+    return hidden();  // Hide from non-admins (they're authenticated)
+  }
+  return pass();
+};
+
+defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [adminResources],
+  guards: [
+    requireAuth,   // First check authentication
+    requireAdmin   // Then check admin role
+  ]
+});
+```
+
+## Effect on UI
+
+When a route is hidden:
+
+### Sidebar Navigation
+The route will not appear in sidebar menus:
+
+```tsx
+// Admin route only visible to admins
+const adminModule = defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [adminResources],
+  guards: [requireAdmin]  // Non-admins won't see this in sidebar
+});
+```
+
+### Command Palette
+Hidden routes are excluded from command palette search results.
+
+### Direct URL Access
+Attempting to navigate directly to a hidden route shows a 404 error.
+
+## Return Value
+
+`hidden()` returns a `GuardResult` object:
+
+```typescript
+{
+  type: "hidden"
+}
+```
+
+This object is processed by AppShell's routing system to throw a 404 error.
+
+## Error Handling
+
+The 404 error can be caught by error boundaries:
+
+```tsx
+import { useRouteError } from "@tailor-platform/app-shell";
+
+const CustomErrorBoundary = () => {
+  const error = useRouteError();
+  
+  // Check if it's a 404 from hidden guard
+  const is404 = error instanceof Response && error.status === 404;
+  
+  if (is404) {
+    return <div>Page not found</div>;
+  }
+  
+  return <div>An error occurred</div>;
+};
+
+defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [adminResources],
+  guards: [requireAdmin],
+  errorBoundary: <CustomErrorBoundary />
+});
+```
+
+## See Also
+
+- [Guards Overview](/api/guards/overview) - Understanding guards
+- [pass()](/api/guards/pass) - Allow access to routes
+- [redirectTo()](/api/guards/redirect-to) - Redirect to another path

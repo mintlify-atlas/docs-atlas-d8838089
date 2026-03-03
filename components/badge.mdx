@@ -1,0 +1,199 @@
+---
+title: Badge
+description: Status badge component with semantic variants for displaying tags, statuses, and labels
+---
+
+The Badge component provides a flexible way to display tags, statuses, and labels with semantic meaning. It supports both solid filled variants and outlined variants with status indicators.
+
+## Import
+
+```tsx
+import { Badge } from "@tailor-platform/app-shell";
+```
+
+## Basic Usage
+
+```tsx
+<Badge variant="success">Active</Badge>
+<Badge variant="warning">Pending</Badge>
+<Badge variant="error">Failed</Badge>
+```
+
+## Props
+
+<ParamField path="variant" type="BadgeVariant" default="default">
+  Badge style variant that determines the visual appearance
+  
+  Available variants:
+  - `default` - Primary color badge
+  - `success` - Green background, white text
+  - `warning` - Yellow background, white text
+  - `error` - Red/destructive background, white text
+  - `neutral` - Secondary color badge
+  - `outline-success` - Outlined with green status dot
+  - `outline-warning` - Outlined with orange status dot
+  - `outline-error` - Outlined with red status dot
+  - `outline-info` - Outlined with blue status dot
+  - `outline-neutral` - Outlined with neutral status dot
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  Badge content (typically text)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for custom styling
+</ParamField>
+
+## Variant Examples
+
+### Solid Variants
+
+Solid badges have colored backgrounds with contrasting text:
+
+```tsx
+import { Badge } from "@tailor-platform/app-shell";
+
+const StatusDisplay = () => (
+  <div className="flex gap-2">
+    <Badge variant="default">Default</Badge>
+    <Badge variant="success">Success</Badge>
+    <Badge variant="warning">Warning</Badge>
+    <Badge variant="error">Error</Badge>
+    <Badge variant="neutral">Neutral</Badge>
+  </div>
+);
+```
+
+### Outline Variants
+
+Outline badges have a border and include a colored status dot:
+
+```tsx
+import { Badge } from "@tailor-platform/app-shell";
+
+const OutlineStatusDisplay = () => (
+  <div className="flex gap-2">
+    <Badge variant="outline-success">Confirmed</Badge>
+    <Badge variant="outline-warning">Pending Review</Badge>
+    <Badge variant="outline-error">Rejected</Badge>
+    <Badge variant="outline-info">In Progress</Badge>
+    <Badge variant="outline-neutral">Draft</Badge>
+  </div>
+);
+```
+
+## Common Use Cases
+
+### Order Status
+
+```tsx
+const OrderStatus = ({ status }: { status: string }) => {
+  const variantMap: Record<string, BadgeVariant> = {
+    CONFIRMED: "outline-success",
+    PENDING: "outline-warning",
+    CANCELLED: "outline-error",
+    SHIPPED: "outline-info",
+  };
+
+  return (
+    <Badge variant={variantMap[status] || "outline-neutral"}>
+      {status}
+    </Badge>
+  );
+};
+```
+
+### User Role Tags
+
+```tsx
+const UserRole = ({ role }: { role: string }) => {
+  const roleVariants: Record<string, BadgeVariant> = {
+    admin: "error",
+    manager: "warning",
+    staff: "neutral",
+  };
+
+  return (
+    <Badge variant={roleVariants[role] || "neutral"}>
+      {role.toUpperCase()}
+    </Badge>
+  );
+};
+```
+
+### Payment Status
+
+```tsx
+const PaymentStatus = ({ isPaid }: { isPaid: boolean }) => (
+  <Badge variant={isPaid ? "success" : "warning"}>
+    {isPaid ? "Paid" : "Unpaid"}
+  </Badge>
+);
+```
+
+## Integration with DescriptionCard
+
+Badges work seamlessly with the DescriptionCard component for status fields:
+
+```tsx
+import { DescriptionCard } from "@tailor-platform/app-shell";
+
+const OrderDetails = ({ order }) => (
+  <DescriptionCard
+    data={order}
+    title="Order Summary"
+    fields={[
+      {
+        key: "status",
+        label: "Status",
+        type: "badge",
+        meta: {
+          badgeVariantMap: {
+            CONFIRMED: "outline-success",
+            PENDING: "outline-warning",
+            CANCELLED: "outline-error",
+          },
+        },
+      },
+      // ... other fields
+    ]}
+  />
+);
+```
+
+## TypeScript
+
+The component exports its prop types for TypeScript usage:
+
+```tsx
+import { type BadgeProps } from "@tailor-platform/app-shell";
+
+const MyComponent = (props: BadgeProps) => {
+  return <Badge {...props} />;
+};
+```
+
+## Accessibility
+
+The Badge component:
+- Uses semantic HTML with proper color contrast ratios
+- Includes focus states for interactive use cases
+- Supports all standard HTML div attributes
+
+## Styling
+
+The Badge component uses Tailwind CSS utilities and can be customized:
+
+```tsx
+// Add custom spacing or positioning
+<Badge variant="success" className="ml-2 mr-4">
+  Active
+</Badge>
+
+// Combine with other elements
+<div className="flex items-center gap-2">
+  <span>Order Status:</span>
+  <Badge variant="outline-success">Confirmed</Badge>
+</div>
+```

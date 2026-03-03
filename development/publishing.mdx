@@ -1,0 +1,314 @@
+---
+title: Publishing Packages
+description: Using changesets to version and publish AppShell packages to npm
+---
+
+AppShell uses [Changesets](https://github.com/changesets/changesets) for automated version management and npm publishing.
+
+## Overview
+
+Changesets provides:
+- **Semantic versioning**: Automatically bump versions based on change types
+- **Changelog generation**: Create CHANGELOG.md from changeset descriptions
+- **Coordinated releases**: Publish multiple packages together
+- **CI automation**: Automated publishing via GitHub Actions
+
+## Creating a Changeset
+
+When you make changes that affect users, create a changeset:
+
+<Steps>
+  <Step title="Run the changeset command">
+    From the repository root:
+    
+    ```bash
+    pnpm changeset:create
+    # or
+    npx changeset
+    ```
+  </Step>
+  
+  <Step title="Select the package">
+    Choose which package(s) are affected (usually `@tailor-platform/app-shell`):
+    
+    ```
+    ? Which packages would you like to include?
+    ✔ @tailor-platform/app-shell
+    ```
+  </Step>
+  
+  <Step title="Choose version bump type">
+    Select the semantic version bump:
+    
+    - **patch**: Bug fixes (0.27.1 → 0.27.2)
+    - **minor**: New features (0.27.1 → 0.28.0)
+    - **major**: Breaking changes (0.27.1 → 1.0.0)
+  </Step>
+  
+  <Step title="Describe the changes">
+    Write a clear description of what changed. This will appear in:
+    - CHANGELOG.md
+    - GitHub Release notes
+    - npm release page
+  </Step>
+</Steps>
+
+This creates a new file in `.changeset/` with a random name like `cool-pandas-jump.md`.
+
+## Changeset File Format
+
+A changeset file looks like this:
+
+```markdown
+---
+"@tailor-platform/app-shell": patch
+---
+
+Updated [graphql](https://www.npmjs.com/package/graphql) (^16.12.0 -> ^16.13.0)
+```
+
+**Structure:**
+- **Frontmatter**: Package name and version bump type
+- **Description**: What changed (supports markdown)
+
+## When to Create Changesets
+
+### DO Create Changesets For:
+
+<AccordionGroup>
+  <Accordion title="New Features" icon="plus">
+    New components, hooks, or utilities that users can use:
+    
+    ```markdown
+    ---
+    "@tailor-platform/app-shell": minor
+    ---
+    
+    Add new `DescriptionCard` component for displaying key-value data in a responsive grid.
+    
+    Usage:
+    ```jsx
+    <DescriptionCard
+      fields={[
+        { label: "Name", value: "John Doe" },
+        { label: "Email", value: "john@example.com" }
+      ]}
+    />
+    ```
+    ```
+  </Accordion>
+  
+  <Accordion title="Bug Fixes" icon="wrench">
+    Fixes that change user-facing behavior:
+    
+    ```markdown
+    ---
+    "@tailor-platform/app-shell": patch
+    ---
+    
+    Fix sidebar navigation not highlighting active route on nested resources.
+    ```
+  </Accordion>
+  
+  <Accordion title="Breaking Changes" icon="triangle-exclamation">
+    Changes that require users to update their code:
+    
+    ```markdown
+    ---
+    "@tailor-platform/app-shell": major
+    ---
+    
+    BREAKING: Removed deprecated `defaultResourceRedirectPath` prop.
+    
+    Use `redirectToResource()` helper instead:
+    
+    Before:
+    ```jsx
+    defineModule({
+      defaultResourceRedirectPath: "list"
+    });
+    ```
+    
+    After:
+    ```jsx
+    defineModule({
+      component: () => redirectToResource("list")
+    });
+    ```
+    ```
+  </Accordion>
+  
+  <Accordion title="API Changes" icon="code">
+    New props, changed function signatures, or updated exports:
+    
+    ```markdown
+    ---
+    "@tailor-platform/app-shell": minor
+    ---
+    
+    Add `onNavigate` callback prop to `AppShell` for tracking navigation events.
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### DO NOT Create Changesets For:
+
+- Internal refactoring that doesn't change behavior
+- Removing unused dependencies
+- Build/dev tooling changes
+- Test-only changes
+- Code style/formatting changes
+- Internal type changes that don't affect public API
+
+## Publishing Workflow
+
+The full release workflow:
+
+<Steps>
+  <Step title="Make changes and create changeset">
+    ```bash
+    # Make your code changes
+    git add .
+    
+    # Create changeset
+    pnpm changeset:create
+    
+    # Commit both code and changeset
+    git commit -m "feat: add new component"
+    git push origin feature-branch
+    ```
+  </Step>
+  
+  <Step title="Open pull request">
+    Create a PR to `main` from your feature branch. The changeset file will be reviewed along with your code.
+  </Step>
+  
+  <Step title="Merge to main">
+    Once approved, merge your PR. The changeset bot will:
+    - Detect the new changeset
+    - Create/update a "Version Packages" PR
+  </Step>
+  
+  <Step title="Review version PR">
+    The bot's PR will:
+    - Update version in `package.json`
+    - Generate CHANGELOG.md entries
+    - Remove the changeset file
+    
+    Review these changes to ensure correctness.
+  </Step>
+  
+  <Step title="Merge version PR to publish">
+    When you merge the "Version Packages" PR:
+    - CI builds the packages
+    - Publishes to npm automatically
+    - Creates a GitHub Release
+  </Step>
+</Steps>
+
+## Manual Publishing
+
+Maintainers can manually publish if needed:
+
+```bash
+# Build all packages
+pnpm build
+
+# Publish to npm
+pnpm changeset:publish
+```
+
+<Warning>
+  Manual publishing should be rare. Prefer the automated workflow via the "Version Packages" PR.
+</Warning>
+
+## Writing Good Changeset Descriptions
+
+### Include Code Examples
+
+For new features or API changes, show how to use them:
+
+```markdown
+---
+"@tailor-platform/app-shell": minor
+---
+
+Add `useAppShell()` hook for accessing application context.
+
+```tsx
+import { useAppShell } from '@tailor-platform/app-shell';
+
+function MyComponent() {
+  const { user, modules } = useAppShell();
+  return <div>Welcome {user.name}</div>;
+}
+```
+```
+
+### Before/After for Breaking Changes
+
+Show migration path for breaking changes:
+
+```markdown
+---
+"@tailor-platform/app-shell": major
+---
+
+BREAKING: `modules` prop now required on `AppShell`.
+
+Before:
+```jsx
+<AppShell title="My App" />
+```
+
+After:
+```jsx
+<AppShell title="My App" modules={[myModule]} />
+```
+```
+
+### Be Specific and Clear
+
+<CardGroup cols={2}>
+  <Card title="Good" icon="circle-check">
+    "Fix sidebar not highlighting active route when navigating to nested resources"
+  </Card>
+  <Card title="Bad" icon="circle-xmark">
+    "Fix navigation bug"
+  </Card>
+</CardGroup>
+
+## Checking Published Versions
+
+View the latest published version:
+
+```bash
+# Check npm registry
+npm view @tailor-platform/app-shell version
+
+# Check all versions
+npm view @tailor-platform/app-shell versions
+```
+
+## Troubleshooting
+
+### Changeset Not Detected
+
+Ensure the changeset file is:
+- In the `.changeset/` directory
+- Committed to git
+- Has valid frontmatter format
+
+### Version PR Not Created
+
+Check that:
+- The changeset file was merged to `main`
+- GitHub Actions workflow is enabled
+- No existing "Version Packages" PR is open
+
+### Publish Failed
+
+Verify:
+- NPM credentials are configured in CI
+- Package builds successfully (`pnpm build`)
+- Version number doesn't already exist on npm

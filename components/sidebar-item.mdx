@@ -1,0 +1,169 @@
+---
+title: SidebarItem
+description: A navigation item component for the sidebar that automatically resolves title and icon from resource definitions
+---
+
+A navigation item for the sidebar that automatically resolves title and icon from the resource definition's meta corresponding to the URL specified in `to`.
+
+## Import
+
+```tsx
+import { SidebarItem } from "@tailor-platform/app-shell";
+```
+
+## Usage
+
+### Auto-resolved from resource meta
+
+The simplest way to use `SidebarItem` is to provide only the `to` prop. The title and icon will be automatically resolved from your resource definitions:
+
+```tsx
+<DefaultSidebar>
+  <SidebarItem to="/dashboard" />
+  <SidebarItem to="/products" />
+</DefaultSidebar>
+```
+
+### Override title and icon
+
+You can override the auto-resolved title and icon:
+
+```tsx
+import { Home } from "lucide-react";
+
+<SidebarItem to="/" title="Home" icon={<Home />} />
+```
+
+### External links
+
+External URLs are automatically detected and rendered with an external link icon:
+
+```tsx
+<SidebarItem to="https://docs.example.com" external />
+```
+
+### Custom rendering with render prop
+
+For full control over the rendered UI, use the `render` prop:
+
+```tsx
+import { Badge } from "@tailor-platform/app-shell";
+
+<SidebarItem
+  to="/tasks"
+  render={({ title, icon, isActive }) => (
+    <>
+      {icon}
+      <span>{title}</span>
+      {isActive && <Badge variant="success">5</Badge>}
+    </>
+  )}
+/>
+```
+
+## Props
+
+<ParamField path="to" type="string" required>
+  Target URL. External URLs (starting with `http://` or `https://`) are rendered as external links.
+</ParamField>
+
+<ParamField path="title" type="string">
+  Override title. When omitted, title is auto-resolved from resource meta.
+</ParamField>
+
+<ParamField path="icon" type="ReactNode">
+  Override icon. When omitted, icon is auto-resolved from resource meta.
+</ParamField>
+
+<ParamField path="external" type="boolean">
+  Opens link in new tab with `target="_blank"`. When true, adds an external link icon and opens in new tab.
+</ParamField>
+
+<ParamField path="activeMatch" type="'exact' | 'prefix'" default="'prefix'">
+  How to match the current path for active state:
+  - `"exact"`: Only highlight when the path matches exactly
+  - `"prefix"`: Highlight when the current path starts with `to` (with segment boundary check)
+</ParamField>
+
+<ParamField path="render" type="(props: SidebarItemRenderProps) => ReactNode">
+  Custom rendering function. When specified, receives `title`, `icon`, `url`, and `isActive` for full customization.
+</ParamField>
+
+## Render Prop
+
+When using the `render` prop, you receive `SidebarItemRenderProps`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `title` | `string` | Resolved title (from override or resource meta) |
+| `url` | `string` | Target URL |
+| `icon` | `ReactNode \| undefined` | Resolved icon |
+| `isActive` | `boolean` | Whether this item is currently active |
+
+## Examples
+
+### Basic sidebar navigation
+
+```tsx
+import {
+  DefaultSidebar,
+  SidebarItem,
+  SidebarSeparator,
+} from "@tailor-platform/app-shell";
+import { Home, Package, Settings } from "lucide-react";
+
+const CustomSidebar = () => (
+  <DefaultSidebar>
+    <SidebarItem to="/" title="Home" icon={<Home />} />
+    <SidebarSeparator />
+    <SidebarItem to="/products" />
+    <SidebarItem to="/orders" />
+    <SidebarSeparator />
+    <SidebarItem to="/settings" icon={<Settings />} />
+  </DefaultSidebar>
+);
+```
+
+### With custom badges
+
+```tsx
+import { Badge } from "@tailor-platform/app-shell";
+
+<SidebarItem
+  to="/notifications"
+  render={({ title, icon, isActive }) => (
+    <div className="flex items-center justify-between w-full">
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className={isActive ? "font-bold" : ""}>{title}</span>
+      </div>
+      <Badge variant="error">3</Badge>
+    </div>
+  )}
+/>
+```
+
+### Mixed internal and external links
+
+```tsx
+<DefaultSidebar>
+  <SidebarItem to="/dashboard" />
+  <SidebarItem to="/products" />
+  <SidebarSeparator />
+  <SidebarItem 
+    to="https://docs.example.com" 
+    title="Documentation" 
+    external 
+  />
+  <SidebarItem 
+    to="https://support.example.com" 
+    title="Support" 
+    external 
+  />
+</DefaultSidebar>
+```
+
+## Related Components
+
+- [SidebarGroup](/components/sidebar-group) - Collapsible group for organizing sidebar items
+- [SidebarLayout](/components/sidebar-layout) - Layout with sidebar and header

@@ -1,0 +1,283 @@
+---
+title: Testing
+description: Running tests, writing test cases, and maintaining code quality in AppShell
+---
+
+AppShell uses Vitest for fast, modern testing with excellent TypeScript support and React component testing.
+
+## Test Framework
+
+The core package uses:
+- **Vitest**: Fast unit test runner (compatible with Jest API)
+- **@testing-library/react**: React component testing utilities
+- **happy-dom**: Lightweight DOM implementation for tests
+
+## Running Tests
+
+### Run All Tests
+
+From the repository root:
+
+```bash
+pnpm test
+```
+
+This runs tests across all packages using Turborepo.
+
+### Run Core Package Tests
+
+To run tests specifically in the core package:
+
+```bash
+cd packages/core
+pnpm test
+```
+
+### Watch Mode
+
+Run tests in watch mode during development:
+
+```bash
+cd packages/core
+pnpm test --watch
+```
+
+### Run Specific Test Files
+
+```bash
+cd packages/core
+pnpm test src/components/appshell.test.tsx
+```
+
+## Test Configuration
+
+The test setup is defined in `packages/core/vitest.config.ts`:
+
+```typescript
+import { defineConfig } from "vitest/config";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+export default defineConfig({
+  plugins: [tsconfigPaths()],
+  test: {
+    environment: "happy-dom",
+  },
+});
+```
+
+**Key Configuration:**
+- **environment: "happy-dom"**: Provides a lightweight DOM for component testing
+- **tsconfigPaths**: Resolves TypeScript path aliases from `tsconfig.json`
+
+## Writing Tests
+
+### Component Tests
+
+Use React Testing Library to test components:
+
+```typescript
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { MyComponent } from './my-component';
+
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    render(<MyComponent title="Test" />);
+    expect(screen.getByText('Test')).toBeInTheDocument();
+  });
+});
+```
+
+### Hook Tests
+
+Test custom hooks with `@testing-library/react`:
+
+```typescript
+import { renderHook } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { useMyHook } from './use-my-hook';
+
+describe('useMyHook', () => {
+  it('returns expected value', () => {
+    const { result } = renderHook(() => useMyHook());
+    expect(result.current).toBeDefined();
+  });
+});
+```
+
+### Testing with Context
+
+Wrap components with required providers:
+
+```typescript
+import { render } from '@testing-library/react';
+import { AppShellProvider } from '../contexts/appshell-provider';
+
+function renderWithProviders(ui: React.ReactElement) {
+  return render(
+    <AppShellProvider value={mockContext}>
+      {ui}
+    </AppShellProvider>
+  );
+}
+
+describe('ComponentWithContext', () => {
+  it('uses context correctly', () => {
+    renderWithProviders(<ComponentWithContext />);
+    // assertions
+  });
+});
+```
+
+## Test Organization
+
+### File Naming
+
+Place test files next to the code they test:
+
+```
+src/
+├── components/
+│   ├── appshell.tsx
+│   ├── appshell.test.tsx      # Component test
+│   ├── sidebar-layout.tsx
+│   └── sidebar-layout.test.tsx
+├── hooks/
+│   ├── use-toast.ts
+│   └── use-toast.test.ts       # Hook test
+└── lib/
+    ├── utils.ts
+    └── utils.test.ts            # Utility test
+```
+
+### Test Structure
+
+Organize tests using `describe` blocks:
+
+```typescript
+describe('ComponentName', () => {
+  describe('rendering', () => {
+    it('renders with default props', () => { });
+    it('renders with custom props', () => { });
+  });
+
+  describe('interactions', () => {
+    it('handles click events', () => { });
+    it('handles keyboard navigation', () => { });
+  });
+
+  describe('edge cases', () => {
+    it('handles missing data gracefully', () => { });
+  });
+});
+```
+
+## Code Quality
+
+### Type Checking
+
+Run TypeScript type checking:
+
+```bash
+pnpm type-check
+```
+
+This runs across all packages and ensures type safety.
+
+### Linting
+
+Lint the core package:
+
+```bash
+cd packages/core
+pnpm lint
+```
+
+## Test Coverage
+
+Generate coverage reports:
+
+```bash
+cd packages/core
+pnpm test --coverage
+```
+
+This creates a coverage report showing tested vs untested code.
+
+## Continuous Integration
+
+Tests run automatically on:
+- Pull requests to `main`
+- Before publishing packages
+- As part of the release process
+
+Ensure all tests pass before submitting a PR.
+
+## Best Practices
+
+<Steps>
+  <Step title="Test user behavior, not implementation">
+    Focus on testing what users see and interact with, not internal component state or implementation details.
+  </Step>
+  
+  <Step title="Use meaningful test descriptions">
+    Write clear `describe` and `it` statements that explain what is being tested.
+  </Step>
+  
+  <Step title="Keep tests isolated">
+    Each test should be independent and not rely on the state from other tests.
+  </Step>
+  
+  <Step title="Mock external dependencies">
+    Use Vitest's mocking capabilities to isolate components from external APIs or services.
+  </Step>
+  
+  <Step title="Test accessibility">
+    Use Testing Library's accessibility queries (`getByRole`, `getByLabelText`) to ensure components are accessible.
+  </Step>
+</Steps>
+
+## Debugging Tests
+
+### Run in UI Mode
+
+Vitest provides an interactive UI for debugging:
+
+```bash
+cd packages/core
+pnpm test --ui
+```
+
+### Use Console Logs
+
+Debug component output:
+
+```typescript
+import { render, screen } from '@testing-library/react';
+import { debug } from '@testing-library/react';
+
+it('debugs component', () => {
+  const { container } = render(<MyComponent />);
+  screen.debug(); // Prints DOM to console
+});
+```
+
+### VS Code Debugging
+
+Add a `.vscode/launch.json` configuration:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Vitest",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["test"],
+      "cwd": "${workspaceFolder}/packages/core"
+    }
+  ]
+}
+```

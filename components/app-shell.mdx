@@ -1,0 +1,347 @@
+---
+title: AppShell
+description: The root component that provides context and configuration for your entire application
+---
+
+## Overview
+
+The `AppShell` component is the root-level provider component for Tailor Platform applications. It manages application-wide context including navigation configuration, theme, authentication state, and custom context data.
+
+This component should be mounted at the root of your application (catch-all segment in Next.js App Router, or root in Vite/React apps).
+
+## Props
+
+<ParamField path="title" type="string">
+  App shell title displayed in the sidebar header
+</ParamField>
+
+<ParamField path="icon" type="React.ReactNode">
+  App shell icon displayed in the sidebar header
+</ParamField>
+
+<ParamField path="basePath" type="string">
+  Base path for the app shell routing
+</ParamField>
+
+<ParamField path="modules" type="Module[]">
+  Navigation configuration created with `defineModule()`. When using the vite-plugin, this is automatically set via `AppShell.WithPages()`.
+</ParamField>
+
+<ParamField path="rootComponent" type="() => React.ReactNode">
+  A component to be rendered at the root level of AppShell (path="/"). Use guards with `redirectTo()` for redirects.
+  
+  ```tsx
+  rootComponent: () => <DashboardHome />
+  ```
+</ParamField>
+
+<ParamField path="settingsResources" type="Resource[]">
+  Settings resources that appear only in the Settings menu
+</ParamField>
+
+<ParamField path="locale" type="string">
+  Locale code for built-in UI strings (e.g., "en", "ja", "fr"). Built-in translations available for "en" and "ja" only. Auto-detects from browser preferences if not provided, defaults to "en" if no browser locale is available.
+</ParamField>
+
+<ParamField path="errorBoundary" type="React.ReactNode">
+  Global error boundary component applied to all routes. When an error occurs in any route component, this component will render. Module and resource-level error boundaries take precedence over this.
+  
+  Use the `useRouteError` hook to access error details within the component.
+  
+  ```tsx
+  import { useRouteError } from "@tailor-platform/app-shell";
+  
+  const GlobalErrorBoundary = () => {
+    const error = useRouteError() as Error;
+    return (
+      <div>
+        <h1>Something went wrong</h1>
+        <p>{error.message}</p>
+      </div>
+    );
+  };
+  
+  <AppShell
+    modules={[...]}
+    errorBoundary={<GlobalErrorBoundary />}
+  />
+  ```
+</ParamField>
+
+<ParamField path="contextData" type="ContextData">
+  Custom context data accessible from guards and components. Use module augmentation to define the type of context data.
+  
+  ```typescript
+  // types.d.ts
+  declare module "@tailor-platform/app-shell" {
+    interface AppShellRegister {
+      contextData: {
+        apiClient: ApiClient;
+        currentUser: User;
+      };
+    }
+  }
+  
+  // App.tsx
+  <AppShell
+    modules={modules}
+    contextData={{ apiClient, currentUser }}
+  />
+  ```
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode">
+  Layout components like `SidebarLayout`
+</ParamField>
+
+## Route Configuration
+
+Routes can be configured in two ways:
+
+### 1. Automatic (Recommended)
+
+Use the vite-plugin which automatically configures pages via `AppShell.WithPages()`:
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+<AppShell title="My App">
+  <SidebarLayout />
+</AppShell>
+```
+
+### 2. Explicit Modules
+
+Pass the `modules` prop for manual configuration:
+
+```tsx
+import { AppShell, defineModule, SidebarLayout } from "@tailor-platform/app-shell";
+
+const modules = [
+  defineModule({
+    path: "dashboard",
+    meta: { title: "Dashboard" },
+    component: DashboardPage,
+    resources: [...]
+  })
+];
+
+<AppShell title="My App" modules={modules}>
+  <SidebarLayout />
+</AppShell>
+```
+
+## Usage Examples
+
+### Basic Setup
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const App = () => (
+  <AppShell title="My Application">
+    <SidebarLayout />
+  </AppShell>
+);
+```
+
+### With Custom Icon and Locale
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+import { Building } from "lucide-react";
+
+const App = () => (
+  <AppShell 
+    title="ERP System"
+    icon={<Building />}
+    locale="en"
+  >
+    <SidebarLayout />
+  </AppShell>
+);
+```
+
+### With Context Data
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const App = () => {
+  const apiClient = useApiClient();
+  const currentUser = useCurrentUser();
+
+  return (
+    <AppShell
+      title="My Application"
+      contextData={{
+        apiClient,
+        currentUser,
+      }}
+    >
+      <SidebarLayout />
+    </AppShell>
+  );
+};
+```
+
+### With Root Component
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const HomePage = () => <div>Welcome Home!</div>;
+
+const App = () => (
+  <AppShell 
+    title="My App"
+    rootComponent={() => <HomePage />}
+  >
+    <SidebarLayout />
+  </AppShell>
+);
+```
+
+### With Error Boundary
+
+```tsx
+import { AppShell, SidebarLayout, useRouteError } from "@tailor-platform/app-shell";
+
+const GlobalErrorBoundary = () => {
+  const error = useRouteError() as Error;
+  
+  return (
+    <div className="error-container">
+      <h1>Oops! Something went wrong</h1>
+      <p>{error.message}</p>
+      <button onClick={() => window.location.reload()}>
+        Reload Page
+      </button>
+    </div>
+  );
+};
+
+const App = () => (
+  <AppShell
+    title="My Application"
+    errorBoundary={<GlobalErrorBoundary />}
+  >
+    <SidebarLayout />
+  </AppShell>
+);
+```
+
+### Complete Configuration
+
+```tsx
+import { 
+  AppShell, 
+  SidebarLayout, 
+  defineModule,
+  defineResource 
+} from "@tailor-platform/app-shell";
+import { Package, Settings } from "lucide-react";
+
+const modules = [
+  defineModule({
+    path: "products",
+    meta: {
+      title: "Products",
+      icon: <Package />
+    },
+    component: ProductsPage,
+    resources: [
+      defineResource({
+        path: "all",
+        meta: { title: "All Products" },
+        component: AllProductsPage
+      })
+    ]
+  })
+];
+
+const settingsResources = [
+  defineResource({
+    path: "general",
+    meta: { title: "General", icon: <Settings /> },
+    component: GeneralSettingsPage
+  })
+];
+
+const App = () => {
+  const apiClient = useApiClient();
+  const currentUser = useCurrentUser();
+
+  return (
+    <AppShell
+      title="ERP System"
+      icon={<Building />}
+      basePath="app"
+      modules={modules}
+      settingsResources={settingsResources}
+      locale="en"
+      contextData={{ apiClient, currentUser }}
+    >
+      <SidebarLayout />
+    </AppShell>
+  );
+};
+```
+
+## Context Access
+
+Access AppShell context in your components using the provided hooks:
+
+```tsx
+import { useAppShell, useAppShellConfig, useAppShellData } from "@tailor-platform/app-shell";
+
+// Access all context
+const { title, configurations, navItems, contextData } = useAppShell();
+
+// Access only config
+const { title, basePath, modules } = useAppShellConfig();
+
+// Access only custom context data
+const contextData = useAppShellData();
+```
+
+## TypeScript
+
+### AppShellProps Type
+
+```typescript
+type AppShellProps = {
+  title?: string;
+  icon?: React.ReactNode;
+  basePath?: string;
+  modules?: Modules;
+  rootComponent?: () => React.ReactNode;
+  settingsResources?: Array<Resource>;
+  locale?: string;
+  errorBoundary?: ErrorBoundaryComponent;
+  contextData?: ContextData;
+  children?: React.ReactNode;
+};
+```
+
+### Context Data Type Augmentation
+
+```typescript
+// types/app-shell.d.ts
+declare module "@tailor-platform/app-shell" {
+  interface AppShellRegister {
+    contextData: {
+      apiClient: ApiClient;
+      currentUser: User | null;
+      featureFlags: Record<string, boolean>;
+    };
+  }
+}
+```
+
+## See Also
+
+- [SidebarLayout](/components/sidebar-layout) - Default layout with sidebar navigation
+- [CommandPalette](/components/command-palette) - Quick navigation component
+- [defineModule](/api/define-module) - Create navigation modules
+- [defineResource](/api/define-resource) - Create pages and resources

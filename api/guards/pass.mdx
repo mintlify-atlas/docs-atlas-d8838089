@@ -1,0 +1,187 @@
+---
+title: pass
+description: Allow access to a route and continue guard evaluation
+---
+
+`pass()` is a helper function that returns a guard result indicating access should be allowed.
+
+## Type Signature
+
+```typescript
+const pass: () => GuardResult;
+
+type GuardResult = { type: "pass" };
+```
+
+## Behavior
+
+When a guard returns `pass()`:
+- **Guard chain continues**: The next guard in the array is evaluated
+- **Component renders**: If all guards pass, the route component renders
+- **No side effects**: Does not modify navigation or perform redirects
+
+## Basic Usage
+
+```tsx
+import { pass } from "@tailor-platform/app-shell";
+
+const allowAccess: Guard = () => {
+  return pass();
+};
+```
+
+## Conditional Access
+
+Most commonly used with conditional logic:
+
+```tsx
+import { pass, hidden } from "@tailor-platform/app-shell";
+
+const requireAuth: Guard = ({ context }) => {
+  if (context.currentUser) {
+    return pass();  // User is authenticated, allow access
+  }
+  return hidden();  // Not authenticated, deny access
+};
+```
+
+## With Multiple Guards
+
+When multiple guards are used, `pass()` allows the chain to continue:
+
+```tsx
+import { pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");
+  }
+  return pass();  // Continue to next guard
+};
+
+const requireAdmin: Guard = ({ context }) => {
+  if (context.currentUser?.role !== "admin") {
+    return hidden();
+  }
+  return pass();  // All checks passed
+};
+
+// Both guards must pass
+defineModule({
+  path: "admin",
+  component: AdminDashboard,
+  resources: [adminResources],
+  guards: [requireAuth, requireAdmin]
+});
+```
+
+## Common Patterns
+
+### Role Check
+
+```tsx
+import { type Guard, pass, hidden } from "@tailor-platform/app-shell";
+
+const requireRole = (role: string): Guard => {
+  return ({ context }) => {
+    return context.currentUser?.role === role ? pass() : hidden();
+  };
+};
+
+defineResource({
+  path: "admin-panel",
+  component: AdminPanel,
+  guards: [requireRole("admin")]
+});
+```
+
+### Feature Flag Check
+
+```tsx
+import { type Guard, pass, hidden } from "@tailor-platform/app-shell";
+
+const requireFeature = (feature: string): Guard => {
+  return ({ context }) => {
+    return context.featureFlags[feature] ? pass() : hidden();
+  };
+};
+
+defineModule({
+  path: "beta",
+  component: BetaFeatures,
+  resources: [betaResources],
+  guards: [requireFeature("beta-features")]
+});
+```
+
+### Permission Check (Async)
+
+```tsx
+import { type Guard, pass, hidden } from "@tailor-platform/app-shell";
+
+const requirePermission = (permission: string): Guard => {
+  return async ({ context }) => {
+    const hasPermission = await context.apiClient.checkPermission(permission);
+    return hasPermission ? pass() : hidden();
+  };
+};
+
+defineResource({
+  path: "billing",
+  component: BillingPage,
+  guards: [requirePermission("billing.view")]
+});
+```
+
+### Plan-Based Access
+
+```tsx
+import { type Guard, pass, hidden } from "@tailor-platform/app-shell";
+
+const requirePlan = (minPlan: string): Guard => {
+  return ({ context }) => {
+    const plans = ["free", "pro", "enterprise"];
+    const userPlanIndex = plans.indexOf(context.currentUser?.plan || "free");
+    const requiredPlanIndex = plans.indexOf(minPlan);
+    
+    return userPlanIndex >= requiredPlanIndex ? pass() : hidden();
+  };
+};
+
+defineResource({
+  path: "analytics",
+  component: AnalyticsPage,
+  guards: [requirePlan("pro")]
+});
+```
+
+## Guard Execution Flow
+
+Guards execute in order and stop on the first non-`pass()` result:
+
+```tsx
+const guards = [
+  guard1,  // Returns pass() → continues
+  guard2,  // Returns pass() → continues
+  guard3,  // Returns hidden() → stops, shows 404
+  guard4,  // Never executed
+];
+```
+
+## Return Value
+
+`pass()` returns a `GuardResult` object:
+
+```typescript
+{
+  type: "pass"
+}
+```
+
+This object is processed by AppShell's routing system to determine whether to render the route component.
+
+## See Also
+
+- [Guards Overview](/api/guards/overview) - Understanding guards
+- [hidden()](/api/guards/hidden) - Deny access and show 404
+- [redirectTo()](/api/guards/redirect-to) - Redirect to another path

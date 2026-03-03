@@ -1,0 +1,108 @@
+---
+title: Development Overview
+description: Get started with AppShell development - installation, monorepo structure, and essential commands
+---
+
+AppShell is built as a monorepo using pnpm workspaces and Turborepo for efficient development across multiple packages.
+
+## Prerequisites
+
+Before contributing to AppShell, ensure you have:
+
+- **Node.js**: Version 24.x (as specified in package.json)
+- **pnpm**: Version 10.24.0 or higher
+- Basic knowledge of React, TypeScript, and monorepo workflows
+
+## Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/tailor-platform/app-shell.git
+cd app-shell
+pnpm install
+```
+
+This will install all dependencies across the monorepo.
+
+## Development Commands
+
+The project uses Turborepo to orchestrate tasks across packages. Here are the main commands:
+
+### Development Mode
+
+Run all packages in development mode with hot reloading:
+
+```bash
+pnpm dev
+```
+
+This starts:
+- The core package in watch mode
+- Example applications at `localhost:3000`
+
+### Building
+
+Build all packages for production:
+
+```bash
+pnpm build
+```
+
+Turborepo automatically handles build dependencies (builds are cached for faster rebuilds).
+
+### Type Checking
+
+Run TypeScript type checking across all packages:
+
+```bash
+pnpm type-check
+```
+
+### Package-Specific Commands
+
+You can also run commands in specific packages:
+
+```bash
+# Build only the core package
+cd packages/core && pnpm build
+
+# Run tests in core
+cd packages/core && pnpm test
+
+# Start dev mode for core package only
+cd packages/core && pnpm dev
+```
+
+## Project Structure
+
+The monorepo is organized as follows:
+
+```
+app-shell/
+├── packages/
+│   ├── core/              # @tailor-platform/app-shell library
+│   └── vite-plugin/       # Vite plugin for AppShell
+├── examples/
+│   ├── nextjs-app/        # Next.js example
+│   ├── vite-app/          # Vite example
+│   └── app-module/        # Module example
+├── .changeset/            # Changeset configuration
+└── turbo.json             # Turborepo configuration
+```
+
+For detailed information about the monorepo structure, see [Monorepo Structure](/development/monorepo-structure).
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Monorepo Structure" icon="folder-tree" href="/development/monorepo-structure">
+    Learn about packages, examples, and build configuration
+  </Card>
+  <Card title="Testing" icon="vial" href="/development/testing">
+    Run tests and maintain code quality
+  </Card>
+  <Card title="Publishing" icon="rocket" href="/development/publishing">
+    Use changesets to version and publish packages
+  </Card>
+</CardGroup>

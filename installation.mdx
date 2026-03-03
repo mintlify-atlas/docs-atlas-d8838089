@@ -1,0 +1,411 @@
+---
+title: Installation
+description: Complete installation guide for AppShell including peer dependencies, package manager setup, and authentication configuration.
+---
+
+This guide covers everything you need to install and configure AppShell in your React application.
+
+## Package installation
+
+Install AppShell using your preferred package manager:
+
+<CodeGroup>
+```bash npm
+npm install @tailor-platform/app-shell
+```
+
+```bash yarn
+yarn add @tailor-platform/app-shell
+```
+
+```bash pnpm
+pnpm add @tailor-platform/app-shell
+```
+</CodeGroup>
+
+## Peer dependencies
+
+AppShell requires React 19 (or React 18) as peer dependencies. Make sure you have them installed:
+
+<CodeGroup>
+```bash npm
+npm install react@19 react-dom@19
+```
+
+```bash yarn
+yarn add react@19 react-dom@19
+```
+
+```bash pnpm
+pnpm add react@19 react-dom@19
+```
+</CodeGroup>
+
+<Note>
+  While React 18 is supported, React 19 is recommended for the best experience and performance.
+</Note>
+
+### Peer dependency details
+
+AppShell's `package.json` specifies:
+
+```json
+"peerDependencies": {
+  "react": ">= 19",
+  "react-dom": ">= 19"
+}
+```
+
+The framework is built on top of these key dependencies (automatically included):
+
+- **react-router** (v7) - Client-side routing
+- **Tailwind CSS** (v4) - Styling framework
+- **lucide-react** - Icon library
+- **@tanstack/react-table** - Table component foundation
+- **next-themes** - Dark mode support
+- **sonner** - Toast notifications
+
+## Tailwind CSS setup
+
+AppShell uses Tailwind CSS v4 for styling. You need to import the AppShell theme in your global CSS file.
+
+<Steps>
+  <Step title="Create or update your global CSS file">
+    Import the AppShell theme before Tailwind:
+    
+    ```css app/globals.css
+    @import "@tailor-platform/app-shell/theme.css";
+    @import "tailwindcss";
+    ```
+    
+    <Warning>
+      The import order matters! The AppShell theme must come **before** the Tailwind import to ensure proper CSS variable definitions.
+    </Warning>
+  </Step>
+  
+  <Step title="Import the global CSS in your app">
+    <CodeGroup>
+    ```tsx Next.js (app/layout.tsx)
+    import "./globals.css";
+    
+    export default function RootLayout({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) {
+      return (
+        <html lang="en">
+          <body>{children}</body>
+        </html>
+      );
+    }
+    ```
+    
+    ```tsx Vite (src/main.tsx)
+    import React from "react";
+    import ReactDOM from "react-dom/client";
+    import App from "./App";
+    import "./globals.css";
+    
+    ReactDOM.createRoot(document.getElementById("root")!).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+### About the AppShell theme
+
+The `theme.css` file includes:
+
+- **Color palette** - Tailor's brand colors and semantic color tokens
+- **CSS variables** - Design system tokens for spacing, typography, and more
+- **Component styles** - Base styles for AppShell components
+
+<Tip>
+  AppShell components use the `astw:` prefix for all Tailwind classes (e.g., `astw:bg-primary`) to avoid conflicts with your application's styles.
+</Tip>
+
+## Authentication setup
+
+AppShell provides built-in OAuth2/OIDC authentication through the `AuthProvider` component.
+
+<Steps>
+  <Step title="Get your Tailor Platform credentials">
+    You'll need three values from your Tailor Platform console:
+    
+    1. **API Endpoint** - Your application's base URL
+       - Go to Application > Overview in Tailor Console
+       - Find "Accessing the API endpoint of this application"
+       - Use only the domain portion (e.g., `https://xyz.erp.dev`)
+       - Do **not** include the `/query` suffix
+    
+    2. **Client ID** - Authentication client identifier
+       - Go to Application > Auth in Tailor Console
+       - Copy your Client ID
+    
+    3. **Redirect URI** - OAuth2 callback URL (optional)
+       - Defaults to `window.location.origin` if not provided
+       - Must match the redirect URI configured in Tailor Auth settings
+  </Step>
+  
+  <Step title="Wrap your app with AuthProvider">
+    ```tsx app/dashboard/page.tsx
+    "use client";
+    import {
+      AuthProvider,
+      AppShell,
+      SidebarLayout,
+    } from "@tailor-platform/app-shell";
+    import { dashboardModule } from "../modules/dashboard";
+    
+    const TAILOR_PLATFORM_URL = "https://xyz.erp.dev";
+    const CLIENT_ID = "your-client-id";
+    
+    const App = () => (
+      <AuthProvider
+        apiEndpoint={TAILOR_PLATFORM_URL}
+        clientId={CLIENT_ID}
+        autoLogin={true}
+        guardComponent={() => (
+          <div style={{ padding: "2rem", textAlign: "center" }}>
+            Loading...
+          </div>
+        )}
+      >
+        <AppShell
+          title="My ERP App"
+          basePath="dashboard"
+          modules={[dashboardModule]}
+        >
+          <SidebarLayout />
+        </AppShell>
+      </AuthProvider>
+    );
+    
+    export default App;
+    ```
+    
+    <Note>
+      When `autoLogin` is `true`, unauthenticated users are automatically redirected to the login page. The `guardComponent` is shown while authentication state is loading.
+    </Note>
+  </Step>
+  
+  <Step title="Access authentication state (optional)">
+    Use the `useAuth` hook to access user information and auth methods:
+    
+    ```tsx components/UserProfile.tsx
+    import { useAuth } from "@tailor-platform/app-shell";
+    
+    export const UserProfile = () => {
+      const { authState, logout } = useAuth();
+      
+      if (!authState.isAuthenticated) {
+        return null;
+      }
+      
+      return (
+        <div>
+          <p>Welcome, {authState.user.name || authState.user.email}!</p>
+          <button onClick={logout}>Sign Out</button>
+        </div>
+      );
+    };
+    ```
+  </Step>
+</Steps>
+
+### Supported identity providers
+
+AppShell's `AuthProvider` works with any IdP configured in your Tailor Platform application:
+
+- Tailor Platform built-in IdP
+- Google Workspace
+- Okta
+- Auth0
+- Microsoft Entra ID (Azure AD)
+- Any OAuth2/OIDC-compliant provider
+
+## Framework-specific setup
+
+### Next.js (App Router)
+
+AppShell works seamlessly with Next.js App Router using a catch-all route:
+
+<Steps>
+  <Step title="Create a catch-all route">
+    Create `app/dashboard/[[...props]]/page.tsx`:
+    
+    ```tsx app/dashboard/[[...props]]/page.tsx
+    "use client";
+    import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+    import { dashboardModule } from "../../modules/dashboard";
+    
+    const Page = () => {
+      return (
+        <AppShell
+          title="My ERP App"
+          basePath="dashboard"
+          modules={[dashboardModule]}
+        >
+          <SidebarLayout />
+        </AppShell>
+      );
+    };
+    
+    export default Page;
+    ```
+    
+    <Warning>
+      Don't forget the `"use client";` directive! AppShell uses React hooks and client-side routing, so it must run on the client.
+    </Warning>
+  </Step>
+  
+  <Step title="Create a root redirect (optional)">
+    If you want `/` to redirect to `/dashboard`, create `app/page.tsx`:
+    
+    ```tsx app/page.tsx
+    import { redirect } from "next/navigation";
+    
+    const Page = () => {
+      redirect("/dashboard");
+    };
+    
+    export default Page;
+    ```
+  </Step>
+</Steps>
+
+### Vite
+
+AppShell works out of the box with Vite:
+
+```tsx src/App.tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+import { dashboardModule } from "./modules/dashboard";
+
+const App = () => {
+  return (
+    <AppShell
+      title="My ERP App"
+      basePath="app"
+      modules={[dashboardModule]}
+    >
+      <SidebarLayout />
+    </AppShell>
+  );
+};
+
+export default App;
+```
+
+## Environment variables
+
+For production deployments, store your Tailor Platform credentials in environment variables:
+
+<CodeGroup>
+```bash .env.local (Next.js)
+NEXT_PUBLIC_TAILOR_PLATFORM_URL=https://xyz.erp.dev
+NEXT_PUBLIC_CLIENT_ID=your-client-id
+```
+
+```bash .env (Vite)
+VITE_TAILOR_PLATFORM_URL=https://xyz.erp.dev
+VITE_CLIENT_ID=your-client-id
+```
+</CodeGroup>
+
+Then use them in your code:
+
+<CodeGroup>
+```tsx Next.js
+const TAILOR_PLATFORM_URL = process.env.NEXT_PUBLIC_TAILOR_PLATFORM_URL!;
+const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID!;
+```
+
+```tsx Vite
+const TAILOR_PLATFORM_URL = import.meta.env.VITE_TAILOR_PLATFORM_URL;
+const CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
+```
+</CodeGroup>
+
+<Warning>
+  Never commit credentials to version control. Add `.env.local` (Next.js) or `.env` (Vite) to your `.gitignore` file.
+</Warning>
+
+## Verification
+
+To verify your installation is working:
+
+1. Start your development server:
+   ```bash
+   npm run dev
+   ```
+
+2. Navigate to your base path (e.g., `http://localhost:3000/dashboard`)
+
+3. You should see:
+   - Sidebar navigation with your modules
+   - Breadcrumb navigation
+   - Your module's component rendering
+
+If you enabled authentication, you should be redirected to the login page first.
+
+## Troubleshooting
+
+### Styles not applying
+
+<Accordion title="Solution">
+  Make sure you:
+  1. Imported `@tailor-platform/app-shell/theme.css` **before** `tailwindcss` in your global CSS
+  2. Imported your global CSS file in your app entry point
+  3. Restarted your development server after making CSS changes
+</Accordion>
+
+### Authentication errors
+
+<Accordion title="Solution">
+  Verify that:
+  1. Your API endpoint does **not** include `/query` (use only the domain)
+  2. Your Client ID matches exactly what's in Tailor Console
+  3. Your redirect URI is configured correctly in Tailor Auth settings
+  4. You're using HTTPS in production (required for OAuth2)
+</Accordion>
+
+### TypeScript errors
+
+<Accordion title="Solution">
+  Ensure your `tsconfig.json` includes:
+  ```json
+  {
+    "compilerOptions": {
+      "jsx": "react-jsx",
+      "moduleResolution": "bundler",
+      "esModuleInterop": true
+    }
+  }
+  ```
+</Accordion>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Build your first AppShell application in 5 minutes
+  </Card>
+  
+  <Card title="Module and resource definition" icon="sitemap">
+    Learn how to structure your application with modules and resources
+  </Card>
+  
+  <Card title="Authentication" icon="lock">
+    Deep dive into authentication, user types, and access control
+  </Card>
+  
+  <Card title="Routing and navigation" icon="route">
+    Master client-side navigation and route guards
+  </Card>
+</CardGroup>

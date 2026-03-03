@@ -1,0 +1,408 @@
+---
+title: Layout
+description: Responsive multi-column layout component for building ERP application pages
+---
+
+The Layout component provides a responsive column-based layout system for building application pages. It supports 1, 2, or 3 column layouts with automatic responsive behavior and optional header sections.
+
+## Import
+
+```tsx
+import { Layout } from "@tailor-platform/app-shell";
+```
+
+## Basic Usage
+
+```tsx
+import { Layout } from "@tailor-platform/app-shell";
+
+const MyPage = () => (
+  <Layout columns={2}>
+    <Layout.Column>
+      <div>Main content area</div>
+    </Layout.Column>
+    <Layout.Column>
+      <div>Sidebar content</div>
+    </Layout.Column>
+  </Layout>
+);
+```
+
+## Props
+
+<ParamField path="columns" type="1 | 2 | 3" required>
+  Number of columns in the layout. **Must match the exact number of `Layout.Column` children.**
+  
+  The component will throw a development error if the column count doesn't match the number of children.
+</ParamField>
+
+<ParamField path="title" type="string">
+  Optional header title displayed above the layout
+</ParamField>
+
+<ParamField path="actions" type="React.ReactNode[]">
+  Array of action components (typically buttons) displayed in the header on the right side.
+  
+  ```tsx
+  actions={[
+    <Button key="cancel" variant="secondary">Cancel</Button>,
+    <Button key="save">Save</Button>,
+  ]}
+  ```
+</ParamField>
+
+<ParamField path="gap" type="4 | 6 | 8" default="4">
+  Gap between columns in Tailwind spacing units:
+  - `4` = 16px (1rem)
+  - `6` = 24px (1.5rem)  
+  - `8` = 32px (2rem)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the layout container
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  Layout.Column components. The number of columns must match the `columns` prop.
+</ParamField>
+
+## Layout.Column Props
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the column
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode">
+  Content to render inside the column
+</ParamField>
+
+## Column Configurations
+
+### 1 Column Layout
+
+Always displays as a single full-width column at all screen sizes.
+
+```tsx
+<Layout columns={1}>
+  <Layout.Column>
+    <div>Full width content</div>
+  </Layout.Column>
+</Layout>
+```
+
+**Use cases:**
+- Simple list views
+- Full-width forms
+- Dashboard pages with stacked sections
+
+### 2 Column Layout
+
+Main content area with a fixed-width sidebar.
+
+```tsx
+<Layout columns={2}>
+  <Layout.Column>
+    <div>Main content (flexible width)</div>
+  </Layout.Column>
+  <Layout.Column>
+    <div>Sidebar (280px minimum)</div>
+  </Layout.Column>
+</Layout>
+```
+
+**Responsive behavior:**
+- **Mobile** (< 1024px): Columns stack vertically
+- **Desktop** (≥ 1024px): Side-by-side layout
+  - First column: Flexible width (grows to fill space)
+  - Second column: Fixed 280px minimum width
+
+**Use cases:**
+- Detail pages with metadata sidebar
+- Forms with related information panel
+- Document viewers with properties panel
+
+### 3 Column Layout
+
+Flexible middle column with fixed-width sidebars on both sides.
+
+```tsx
+<Layout columns={3}>
+  <Layout.Column>
+    <div>Left sidebar (320px)</div>
+  </Layout.Column>
+  <Layout.Column>
+    <div>Main content (flexible)</div>
+  </Layout.Column>
+  <Layout.Column>
+    <div>Right sidebar (280px)</div>
+  </Layout.Column>
+</Layout>
+```
+
+**Responsive behavior:**
+- **Mobile** (< 1280px): All columns stack vertically
+- **Desktop** (≥ 1280px): Three columns side-by-side
+  - First column: Fixed 320px minimum width
+  - Second column: Flexible width (grows to fill space)
+  - Third column: Fixed 280px minimum width
+
+**Use cases:**
+- Complex dashboards
+- Advanced editing interfaces
+- Multi-panel configuration pages
+
+## Header with Actions
+
+Add a title and action buttons to the layout:
+
+```tsx
+import { Layout } from "@tailor-platform/app-shell";
+import { Button } from "@/components/ui/button";
+
+const EditProductPage = () => (
+  <Layout 
+    columns={2}
+    title="Edit Product"
+    actions={[
+      <Button key="cancel" variant="secondary">
+        Cancel
+      </Button>,
+      <Button key="save">
+        Save Changes
+      </Button>,
+    ]}
+  >
+    <Layout.Column>
+      {/* Product form */}
+    </Layout.Column>
+    <Layout.Column>
+      {/* Product metadata */}
+    </Layout.Column>
+  </Layout>
+);
+```
+
+## Usage in Resources
+
+Use Layout in your resource component definitions:
+
+```tsx
+import { defineResource, Layout } from "@tailor-platform/app-shell";
+import { ProductForm } from "./ProductForm";
+import { ProductMeta } from "./ProductMeta";
+
+const productEditResource = defineResource({
+  path: ":productId/edit",
+  meta: { title: "Edit Product" },
+  component: () => {
+    const { productId } = useParams();
+    const product = useProduct(productId);
+    
+    return (
+      <Layout 
+        columns={2}
+        title={product.name}
+        actions={[
+          <Button key="cancel" onClick={() => navigate(-1)}>
+            Cancel
+          </Button>,
+          <Button key="save" onClick={handleSave}>
+            Save
+          </Button>,
+        ]}
+      >
+        <Layout.Column>
+          <ProductForm product={product} />
+        </Layout.Column>
+        <Layout.Column>
+          <ProductMeta product={product} />
+        </Layout.Column>
+      </Layout>
+    );
+  },
+});
+```
+
+## Common Patterns
+
+### Form with Sidebar
+
+Typical pattern for edit/create pages:
+
+```tsx
+const CustomerEditPage = ({ customer }) => (
+  <Layout columns={2}>
+    <Layout.Column>
+      {/* Main form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Customer Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CustomerForm customer={customer} />
+        </CardContent>
+      </Card>
+    </Layout.Column>
+    
+    <Layout.Column>
+      {/* Metadata sidebar */}
+      <DescriptionCard
+        data={customer}
+        title="Metadata"
+        fields={[
+          { key: "createdAt", label: "Created", type: "date" },
+          { key: "updatedAt", label: "Updated", type: "date" },
+          { key: "createdBy", label: "Created By" },
+        ]}
+      />
+    </Layout.Column>
+  </Layout>
+);
+```
+
+### Dashboard with Widgets
+
+```tsx
+const Dashboard = () => (
+  <Layout columns={3} gap={6}>
+    <Layout.Column>
+      <RecentOrders />
+    </Layout.Column>
+    <Layout.Column>
+      <SalesChart />
+      <RevenueMetrics />
+    </Layout.Column>
+    <Layout.Column>
+      <ActivityFeed />
+    </Layout.Column>
+  </Layout>
+);
+```
+
+### Stacked Sections
+
+```tsx
+const OrderDetailsPage = ({ order }) => (
+  <Layout columns={1}>
+    <Layout.Column>
+      <DescriptionCard
+        data={order}
+        title="Order Information"
+        fields={orderFields}
+      />
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Line Items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <OrderItemsTable items={order.items} />
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PaymentHistory payments={order.payments} />
+        </CardContent>
+      </Card>
+    </Layout.Column>
+  </Layout>
+);
+```
+
+### Custom Column Spacing
+
+```tsx
+// Larger gap for visual separation
+<Layout columns={2} gap={8}>
+  <Layout.Column>
+    <MainContent />
+  </Layout.Column>
+  <Layout.Column>
+    <Sidebar />
+  </Layout.Column>
+</Layout>
+```
+
+## TypeScript
+
+The component exports TypeScript types:
+
+```tsx
+import { type LayoutProps, type ColumnProps } from "@tailor-platform/app-shell";
+
+const MyLayout = (props: Partial<LayoutProps>) => (
+  <Layout columns={2} {...props}>
+    <Layout.Column>
+      <div>Content</div>
+    </Layout.Column>
+    <Layout.Column>
+      <div>Sidebar</div>
+    </Layout.Column>
+  </Layout>
+);
+```
+
+## Validation
+
+In development mode, the Layout component validates that the number of `Layout.Column` children matches the `columns` prop:
+
+```tsx
+// ❌ Error: Expected 2 Layout.Column children, but found 1
+<Layout columns={2}>
+  <Layout.Column>Only one column</Layout.Column>
+</Layout>
+
+// ✅ Correct
+<Layout columns={2}>
+  <Layout.Column>First column</Layout.Column>
+  <Layout.Column>Second column</Layout.Column>
+</Layout>
+```
+
+## Styling
+
+Columns automatically include vertical spacing between child elements:
+
+```tsx
+<Layout columns={1}>
+  <Layout.Column>
+    {/* Each child has 1rem (16px) gap */}
+    <Card>Card 1</Card>
+    <Card>Card 2</Card>
+    <Card>Card 3</Card>
+  </Layout.Column>
+</Layout>
+```
+
+Add custom styles to columns:
+
+```tsx
+<Layout columns={2}>
+  <Layout.Column className="bg-background">
+    <MainContent />
+  </Layout.Column>
+  <Layout.Column className="bg-muted">
+    <Sidebar />
+  </Layout.Column>
+</Layout>
+```
+
+## Best Practices
+
+1. **Match Column Count**: Always ensure the number of `Layout.Column` children matches the `columns` prop
+2. **Use Semantic Structure**: Use 2-column layouts for main/sidebar patterns, 3-column for complex dashboards
+3. **Consider Mobile**: Remember that columns stack vertically on mobile - order content accordingly
+4. **Consistent Spacing**: Use the `gap` prop instead of adding margins to columns
+5. **Header Actions**: Place primary actions last in the actions array (rightmost position)
+
+## Accessibility
+
+The Layout component:
+- Uses semantic HTML structure
+- Maintains logical reading order when columns stack
+- Respects user font size preferences
+- Works with keyboard navigation

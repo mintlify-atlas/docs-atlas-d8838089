@@ -1,0 +1,297 @@
+---
+title: 'useParams'
+description: 'Hook for accessing dynamic route parameters'
+---
+
+`useParams` is a React hook that returns an object containing the dynamic parameters from the current URL. It's re-exported from react-router v7 and is essential for building dynamic routes in AppShell applications.
+
+<Warning>
+  Always import `useParams` from `@tailor-platform/app-shell`, not from `react-router` directly. AppShell manages its own router instance, and importing from the wrong package will cause the hook to return empty values.
+</Warning>
+
+## Usage
+
+```tsx
+import { useParams } from '@tailor-platform/app-shell';
+
+const ProductDetail = () => {
+  const { id } = useParams();
+
+  return <h1>Product ID: {id}</h1>;
+};
+```
+
+## Signature
+
+```typescript
+const params: Params<string> = useParams();
+
+// With TypeScript type parameter
+const params = useParams<{ id: string }>();
+
+type Params<Key extends string = string> = {
+  readonly [key in Key]: string | undefined;
+};
+```
+
+## Examples
+
+### Single Parameter
+
+For a route defined as `/orders/:id/page.tsx`:
+
+```tsx
+import { useParams } from '@tailor-platform/app-shell';
+
+const OrderDetail = () => {
+  const { id } = useParams<{ id: string }>();
+
+  return (
+    <div>
+      <h1>Order #{id}</h1>
+      <p>View details for order {id}</p>
+    </div>
+  );
+};
+```
+
+### Multiple Parameters
+
+For a route like `/orders/:orderId/items/:itemId/page.tsx`:
+
+```tsx
+import { useParams } from '@tailor-platform/app-shell';
+
+const OrderItemDetail = () => {
+  const { orderId, itemId } = useParams<{
+    orderId: string;
+    itemId: string;
+  }>();
+
+  return (
+    <div>
+      <h1>Order {orderId}</h1>
+      <h2>Item {itemId}</h2>
+    </div>
+  );
+};
+```
+
+### Using Params in Data Fetching
+
+```tsx
+import { useParams } from '@tailor-platform/app-shell';
+import { useQuery } from '@apollo/client';
+
+const GET_PRODUCT = gql`
+  query GetProduct($id: ID!) {
+    product(id: $id) {
+      id
+      name
+      price
+    }
+  }
+`;
+
+const ProductPage = () => {
+  const { id } = useParams<{ id: string }>();
+  const { data, loading, error } = useQuery(GET_PRODUCT, {
+    variables: { id },
+  });
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error.message}</p>;
+
+  return (
+    <div>
+      <h1>{data.product.name}</h1>
+      <p>Price: ${data.product.price}</p>
+    </div>
+  );
+};
+```
+
+### Navigation with Params
+
+Combine `useParams` with `useNavigate` for dynamic navigation:
+
+```tsx
+import { useParams, useNavigate } from '@tailor-platform/app-shell';
+
+const OrderDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const goToEdit = () => {
+    navigate(`/orders/${id}/edit`);
+  };
+
+  const goToItems = () => {
+    navigate(`/orders/${id}/items`);
+  };
+
+  return (
+    <div>
+      <h1>Order {id}</h1>
+      <button onClick={goToEdit}>Edit Order</button>
+      <button onClick={goToItems}>View Items</button>
+    </div>
+  );
+};
+```
+
+### Dynamic Breadcrumbs with Params
+
+You can use params to create dynamic breadcrumb titles in your resource definitions:
+
+```tsx
+import { defineResource, useParams } from '@tailor-platform/app-shell';
+
+const orderDetailResource = defineResource({
+  path: ':id',
+  meta: {
+    title: 'Order Details',
+    // Function receives the param value
+    breadcrumbTitle: (id) => `Order ${id}`,
+  },
+  component: () => {
+    const { id } = useParams<{ id: string }>();
+    return <div>Order {id} details...</div>;
+  },
+});
+```
+
+## File-Based Routing
+
+With AppShell's file-based routing (Vite plugin), dynamic segments are defined using square brackets:
+
+```
+src/pages/
+├── dashboard/
+│   ├── orders/
+│   │   ├── [id]/
+│   │   │   └── page.tsx       # Route: /dashboard/orders/:id
+│   │   └── page.tsx           # Route: /dashboard/orders
+```
+
+```tsx
+// src/pages/dashboard/orders/[id]/page.tsx
+import { useParams } from '@tailor-platform/app-shell';
+
+const OrderDetailPage = () => {
+  const { id } = useParams<{ id: string }>();
+  
+  return <h1>Order {id}</h1>;
+};
+
+export default OrderDetailPage;
+```
+
+## Module-Based Routing
+
+With module definitions, use `:paramName` syntax:
+
+```tsx
+import { defineResource, useParams } from '@tailor-platform/app-shell';
+
+const orderDetailResource = defineResource({
+  path: ':id',  // Creates /orders/:id route
+  component: () => {
+    const { id } = useParams<{ id: string }>();
+    return <div>Order {id}</div>;
+  },
+});
+```
+
+## Type Safety
+
+### With TypeScript
+
+Always provide type parameters for better type safety:
+
+```tsx
+// ✅ Good - type-safe params
+const { id } = useParams<{ id: string }>();
+
+// ❌ Avoid - params are typed as string | undefined
+const params = useParams();
+const id = params.id; // string | undefined
+```
+
+### Optional Parameters
+
+All parameters are technically optional (can be `undefined`):
+
+```tsx
+const { id } = useParams<{ id?: string }>();
+
+if (!id) {
+  return <div>No ID provided</div>;
+}
+
+// Use id safely here
+return <div>Order {id}</div>;
+```
+
+## Common Patterns
+
+### Guard Against Missing Params
+
+```tsx
+const ProductDetail = () => {
+  const { id } = useParams<{ id: string }>();
+
+  if (!id) {
+    return <div>Product ID is required</div>;
+  }
+
+  return <div>Product {id}</div>;
+};
+```
+
+### Parse Numeric IDs
+
+```tsx
+const OrderDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const orderId = id ? parseInt(id, 10) : null;
+
+  if (!orderId || isNaN(orderId)) {
+    return <div>Invalid order ID</div>;
+  }
+
+  return <div>Order #{orderId}</div>;
+};
+```
+
+### Combine with Other Route Data
+
+```tsx
+import { useParams, useLocation } from '@tailor-platform/app-shell';
+
+const OrderDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  
+  // Access query params
+  const searchParams = new URLSearchParams(location.search);
+  const tab = searchParams.get('tab') || 'details';
+
+  return (
+    <div>
+      <h1>Order {id}</h1>
+      <p>Current tab: {tab}</p>
+    </div>
+  );
+};
+```
+
+## Related Hooks
+
+- [`useNavigate`](/api/router/use-navigate) - Programmatic navigation
+- [`useLocation`](/api/router/use-location) - Access current location object
+
+## See Also
+
+- [Routing and Navigation Guide](/routing-and-navigation)
+- [Dynamic Routes](https://reactrouter.com/start/library/routing) - React Router v7 documentation

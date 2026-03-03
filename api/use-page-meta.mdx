@@ -1,0 +1,314 @@
+---
+title: usePageMeta
+description: Hook to retrieve page metadata (title and icon) for a given URL path
+---
+
+React hook to retrieve page metadata (title and icon) for a given URL path. Useful for building custom navigation components, breadcrumbs, or displaying page information dynamically.
+
+## Signature
+
+```typescript
+const usePageMeta: (path: string) => PageMeta | null
+
+type PageMeta = {
+  title: string;
+  icon?: ReactNode;
+}
+```
+
+## Parameters
+
+<ParamField path="path" type="string" required>
+  URL path to find metadata for (e.g., "/products/all", "/orders/:id")
+  
+  Supports:
+  - Static paths: `/dashboard`, `/products/list`
+  - Dynamic segments: `/orders/:orderId`, `/products/:slug`
+  - Nested paths: `/settings/profile/edit`
+</ParamField>
+
+## Returns
+
+<ResponseField name="PageMeta | null" type="object">
+  Returns an object containing page metadata if found, or `null` if the path is external or not found
+  
+  <Expandable title="properties">
+    <ResponseField name="title" type="string">
+      Page title resolved from module/resource meta.title or inferred from path
+    </ResponseField>
+    
+    <ResponseField name="icon" type="ReactNode | undefined">
+      Optional icon associated with the page
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Display Current Page Info
+
+```tsx
+import { usePageMeta } from "@tailor-platform/app-shell";
+import { useLocation } from "react-router";
+
+function PageHeader() {
+  const location = useLocation();
+  const pageMeta = usePageMeta(location.pathname);
+  
+  if (!pageMeta) {
+    return <h1>Unknown Page</h1>;
+  }
+  
+  return (
+    <header>
+      {pageMeta.icon}
+      <h1>{pageMeta.title}</h1>
+    </header>
+  );
+}
+```
+
+### Custom Navigation Item
+
+```tsx
+import { usePageMeta } from "@tailor-platform/app-shell";
+import { Link } from "react-router";
+
+function NavItem({ to }: { to: string }) {
+  const pageMeta = usePageMeta(to);
+  
+  return (
+    <Link to={to}>
+      {pageMeta?.icon}
+      <span>{pageMeta?.title || to}</span>
+    </Link>
+  );
+}
+
+// Usage
+function Navigation() {
+  return (
+    <nav>
+      <NavItem to="/dashboard" />
+      <NavItem to="/products" />
+      <NavItem to="/orders" />
+    </nav>
+  );
+}
+```
+
+### Dynamic Breadcrumbs
+
+```tsx
+import { usePageMeta } from "@tailor-platform/app-shell";
+import { useLocation } from "react-router";
+
+function Breadcrumbs() {
+  const location = useLocation();
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  
+  const breadcrumbPaths = pathSegments.map((_, index) => {
+    return "/" + pathSegments.slice(0, index + 1).join("/");
+  });
+  
+  return (
+    <nav aria-label="Breadcrumb">
+      <ol>
+        {breadcrumbPaths.map((path) => {
+          const pageMeta = usePageMeta(path);
+          return (
+            <li key={path}>
+              <a href={path}>
+                {pageMeta?.icon}
+                {pageMeta?.title || path}
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+```
+
+### Page Title Component
+
+```tsx
+import { usePageMeta } from "@tailor-platform/app-shell";
+import { useLocation } from "react-router";
+import { useEffect } from "react";
+
+function DocumentTitle() {
+  const location = useLocation();
+  const pageMeta = usePageMeta(location.pathname);
+  
+  useEffect(() => {
+    if (pageMeta) {
+      document.title = `${pageMeta.title} - My App`;
+    }
+  }, [pageMeta]);
+  
+  return null;
+}
+
+// Add to your app root
+function App() {
+  return (
+    <>
+      <DocumentTitle />
+      <YourAppContent />
+    </>
+  );
+}
+```
+
+### Tab Navigation
+
+```tsx
+import { usePageMeta } from "@tailor-platform/app-shell";
+import { Link, useLocation } from "react-router";
+
+function TabNavigation({ tabs }: { tabs: string[] }) {
+  const location = useLocation();
+  
+  return (
+    <div role="tablist">
+      {tabs.map((tabPath) => {
+        const pageMeta = usePageMeta(tabPath);
+        const isActive = location.pathname === tabPath;
+        
+        return (
+          <Link
+            key={tabPath}
+            to={tabPath}
+            role="tab"
+            aria-selected={isActive}
+            className={isActive ? "active" : ""}
+          >
+            {pageMeta?.icon}
+            <span>{pageMeta?.title || tabPath}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+// Usage
+function SettingsPage() {
+  return (
+    <div>
+      <h1>Settings</h1>
+      <TabNavigation 
+        tabs={[
+          "/settings/profile",
+          "/settings/security",
+          "/settings/notifications",
+        ]}
+      />
+    </div>
+  );
+}
+```
+
+## How It Works
+
+### Path Matching
+
+The hook searches through all registered modules and resources to find a matching path:
+
+1. **Exact matches**: `/products/list` matches exactly
+2. **Dynamic segments**: `/orders/:id` matches `/orders/123`
+3. **Nested resources**: Searches recursively through sub-resources
+4. **External links**: Returns `null` for paths starting with `http://` or `https://`
+
+### Title Resolution
+
+Titles are resolved in this order:
+
+1. Custom `meta.title` from module/resource definition
+2. Localized title if using `LocalizedString`
+3. Path converted to title case (e.g., "product-list" → "Product List")
+
+### Example Module Definition
+
+```tsx
+import { defineModule, defineResource } from "@tailor-platform/app-shell";
+import { Package } from "lucide-react";
+
+const productsModule = defineModule({
+  path: "products",
+  meta: {
+    title: "Products",
+    icon: <Package />,
+  },
+  resources: [
+    defineResource({
+      path: "list",
+      meta: {
+        title: "Product List",
+      },
+      component: ProductList,
+    }),
+    defineResource({
+      path: ":productId",
+      meta: {
+        title: "Product Details",
+      },
+      component: ProductDetails,
+    }),
+  ],
+});
+```
+
+With this configuration:
+
+```tsx
+usePageMeta("/products") 
+// Returns: { title: "Products", icon: <Package /> }
+
+usePageMeta("/products/list")
+// Returns: { title: "Product List", icon: undefined }
+
+usePageMeta("/products/abc-123")
+// Returns: { title: "Product Details", icon: undefined }
+
+usePageMeta("https://example.com")
+// Returns: null (external link)
+```
+
+## Edge Cases
+
+### Path Not Found
+
+```tsx
+const pageMeta = usePageMeta("/non-existent-path");
+// Returns: null
+```
+
+### External URLs
+
+```tsx
+const pageMeta = usePageMeta("https://external.com/page");
+// Returns: null
+```
+
+### Root Path
+
+```tsx
+const pageMeta = usePageMeta("/");
+// Returns metadata for the root module if defined, or null
+```
+
+## Best Practices
+
+1. **Always check for null**: The hook may return `null` for external links or unknown paths
+2. **Provide fallbacks**: Display a default title/icon when metadata is not found
+3. **Use with localization**: Combine with `defineI18nLabels` for multi-language support
+4. **Cache results**: React automatically memoizes hook results, but consider useMemo for expensive operations
+
+## Related
+
+- [defineModule](/api/define-module) - Define modules with metadata
+- [defineResource](/api/define-resource) - Define resources with metadata
+- [SidebarItem](/components/sidebar-item) - Uses this hook internally for navigation

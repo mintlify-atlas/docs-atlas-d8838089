@@ -1,0 +1,376 @@
+---
+title: Building Your First App
+description: Step-by-step guide to creating your first application with Tailor Platform App Shell
+---
+
+This guide walks you through building a complete admin dashboard application with navigation, pages, and routing using App Shell.
+
+## What You'll Build
+
+A multi-page dashboard with:
+- A dashboard home page
+- An orders list page
+- Order detail pages with dynamic routing
+- Settings page
+- Automatic sidebar navigation
+
+## Prerequisites
+
+Before starting, make sure you have:
+- Node.js 18+ installed
+- Basic knowledge of React and TypeScript
+- A React project set up (Next.js or Vite)
+
+## Installation
+
+<Steps>
+
+<Step title="Install App Shell">
+
+Install the package from npm:
+
+```bash
+npm install @tailor-platform/app-shell
+```
+
+Or with other package managers:
+
+```bash
+pnpm add @tailor-platform/app-shell
+yarn add @tailor-platform/app-shell
+```
+
+</Step>
+
+<Step title="Create Your Module Structure">
+
+Define your application modules and resources. Create a file called `modules.tsx`:
+
+```tsx
+import { defineModule, defineResource } from "@tailor-platform/app-shell";
+import { Package, Settings } from "lucide-react";
+
+// Dashboard module with home page
+const dashboardModule = defineModule({
+  path: "dashboard",
+  meta: {
+    title: "Dashboard",
+    icon: <Package />,
+  },
+  component: ({ title }) => (
+    <div style={{ padding: "1.5rem" }}>
+      <h1>{title}</h1>
+      <p>Welcome to your dashboard!</p>
+    </div>
+  ),
+  resources: [],
+});
+
+// Settings module
+const settingsModule = defineModule({
+  path: "settings",
+  meta: {
+    title: "Settings",
+    icon: <Settings />,
+  },
+  component: ({ title }) => (
+    <div style={{ padding: "1.5rem" }}>
+      <h1>{title}</h1>
+      <p>Manage your application settings here.</p>
+    </div>
+  ),
+  resources: [],
+});
+
+export const modules = [dashboardModule, settingsModule];
+```
+
+</Step>
+
+<Step title="Set Up AppShell Component">
+
+Create your main App component with `AppShell` and `SidebarLayout`:
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+import { modules } from "./modules";
+
+const App = () => {
+  return (
+    <AppShell 
+      title="My Dashboard" 
+      modules={modules}
+    >
+      <SidebarLayout />
+    </AppShell>
+  );
+};
+
+export default App;
+```
+
+<Note>
+The `SidebarLayout` component automatically generates navigation from your modules. No additional configuration needed!
+</Note>
+
+</Step>
+
+<Step title="Add the App to Your Entry Point">
+
+For **Vite**, update your `main.tsx`:
+
+```tsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "@tailor-platform/app-shell/globals.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+```
+
+For **Next.js**, update your `app/layout.tsx`:
+
+```tsx
+import "@tailor-platform/app-shell/globals.css";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+</Step>
+
+</Steps>
+
+## Adding Nested Pages
+
+Now let's add more pages to make your app functional.
+
+<Steps>
+
+<Step title="Create an Orders List Page">
+
+Add a resource to the dashboard module:
+
+```tsx
+const ordersResource = defineResource({
+  path: "orders",
+  meta: {
+    title: "Orders",
+  },
+  component: () => {
+    const orders = [
+      { id: "order-001", name: "Office Supplies", status: "Shipped" },
+      { id: "order-002", name: "Electronics", status: "Processing" },
+      { id: "order-003", name: "Furniture", status: "Delivered" },
+    ];
+
+    return (
+      <div style={{ padding: "1.5rem" }}>
+        <h1>Orders</h1>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {orders.map((order) => (
+            <div key={order.id}>
+              <strong>{order.name}</strong> - {order.status}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  },
+});
+```
+
+</Step>
+
+<Step title="Add Dynamic Routes for Order Details">
+
+Create a detail page with a dynamic `:id` parameter:
+
+```tsx
+import { useParams } from "@tailor-platform/app-shell";
+
+const orderDetailResource = defineResource({
+  path: ":id",
+  meta: {
+    title: "Order Detail",
+  },
+  component: () => {
+    const { id } = useParams<{ id: string }>();
+
+    return (
+      <div style={{ padding: "1.5rem" }}>
+        <h1>Order Detail: {id}</h1>
+        <div style={{ 
+          padding: "1rem", 
+          backgroundColor: "hsl(var(--muted))",
+          borderRadius: "0.5rem" 
+        }}>
+          <p><strong>Order ID:</strong> {id}</p>
+          <p><strong>Status:</strong> Processing</p>
+          <p><strong>Created:</strong> {new Date().toLocaleDateString()}</p>
+        </div>
+      </div>
+    );
+  },
+});
+```
+
+<Tip>
+Dynamic segments use the `:paramName` syntax, just like React Router. Access them with the `useParams` hook.
+</Tip>
+
+</Step>
+
+<Step title="Connect Resources to Module">
+
+Update your dashboard module to include the orders resource with its nested detail page:
+
+```tsx
+const dashboardModule = defineModule({
+  path: "dashboard",
+  meta: {
+    title: "Dashboard",
+    icon: <Package />,
+  },
+  component: ({ title }) => (
+    <div style={{ padding: "1.5rem" }}>
+      <h1>{title}</h1>
+      <p>Welcome to your dashboard!</p>
+    </div>
+  ),
+  // Add orders resource with nested detail page
+  resources: [
+    defineResource({
+      path: "orders",
+      meta: { title: "Orders" },
+      component: OrdersPage,
+      // Nested resource for order details
+      subResources: [orderDetailResource],
+    }),
+  ],
+});
+```
+
+</Step>
+
+</Steps>
+
+## Adding Navigation Links
+
+Make your pages interactive with the `Link` component:
+
+```tsx
+import { Link } from "@tailor-platform/app-shell";
+
+const OrdersPage = () => {
+  const orders = [
+    { id: "order-001", name: "Office Supplies", status: "Shipped" },
+    { id: "order-002", name: "Electronics", status: "Processing" },
+  ];
+
+  return (
+    <div style={{ padding: "1.5rem" }}>
+      <h1>Orders</h1>
+      {orders.map((order) => (
+        <Link 
+          key={order.id} 
+          to={`/dashboard/orders/${order.id}`}
+          style={{ display: "block", marginBottom: "0.5rem" }}
+        >
+          {order.name} - {order.status}
+        </Link>
+      ))}
+    </div>
+  );
+};
+```
+
+## Testing Your Application
+
+Start your development server:
+
+```bash
+npm run dev
+```
+
+You should see:
+- A sidebar with "Dashboard" and "Settings" modules
+- Clicking "Dashboard" shows your home page
+- "Orders" appears under Dashboard in the sidebar
+- Clicking an order navigates to the detail page
+- The URL updates to reflect the current page
+
+## Next Steps
+
+Now that you have a working app, explore these guides:
+
+- [Custom Layouts](/guides/custom-layouts) - Learn about the Layout component for complex page structures
+- [Guards & Permissions](/guides/guards-permissions) - Add access control to your pages
+- [Internationalization](/guides/internationalization) - Support multiple languages
+
+## Common Patterns
+
+### Module Without a Landing Page
+
+If you don't need a landing page for a module, use a guard to redirect:
+
+```tsx
+import { redirectTo } from "@tailor-platform/app-shell";
+
+const reportsModule = defineModule({
+  path: "reports",
+  meta: { title: "Reports" },
+  // Redirect to first resource
+  guards: [() => redirectTo("/reports/sales")],
+  resources: [
+    defineResource({
+      path: "sales",
+      component: SalesReport,
+    }),
+  ],
+});
+```
+
+### Using Data from Context
+
+Pass data to all pages via `contextData`:
+
+```tsx
+const App = () => {
+  const apiClient = useApiClient();
+  const currentUser = useCurrentUser();
+
+  return (
+    <AppShell 
+      title="My Dashboard" 
+      modules={modules}
+      contextData={{ apiClient, currentUser }}
+    >
+      <SidebarLayout />
+    </AppShell>
+  );
+};
+
+// Access in any component
+const MyPage = () => {
+  const { contextData } = useAppShell();
+  return <div>Welcome, {contextData.currentUser.name}</div>;
+};
+```
+
+<Warning>
+Make sure to define the `contextData` type using TypeScript module augmentation. See the [API Reference](/api-reference/appshell#context-data) for details.
+</Warning>

@@ -1,0 +1,258 @@
+---
+title: defineResource
+description: Define a resource that renders a React component
+---
+
+Defines a resource that can be nested within modules or other resources. Resources represent individual pages or features in your application.
+
+## Signature
+
+```typescript
+function defineResource(props: DefineResourceProps): Resource
+```
+
+## Parameters
+
+<ParamField path="path" type="string" required>
+  URL path for the resource. Supports dynamic segments using colon prefix (e.g., `:id`, `:productSlug`).
+</ParamField>
+
+<ParamField path="component" type="(props: ResourceComponentProps) => ReactNode" required>
+  Component to render when this resource is active.
+  
+  Receives `ResourceComponentProps`:
+  - `title: string` - Title of the resource
+  - `icon?: ReactNode` - Optional icon
+  - `resources?: Resource[]` - Optional sub-resources
+</ParamField>
+
+<ParamField path="meta" type="object">
+  Metadata configuration for the resource.
+  
+  <ParamField path="meta.title" type="string | LocalizedString">
+    Display title used in navigation and breadcrumbs. Defaults to path in capital case.
+  </ParamField>
+  
+  <ParamField path="meta.icon" type="ReactNode">
+    Icon displayed in navigation.
+  </ParamField>
+  
+  <ParamField path="meta.breadcrumbTitle" type="string | ((segment: string) => string)">
+    Custom breadcrumb segment title. Can be a static string or a function that takes the path segment and returns a title.
+  </ParamField>
+</ParamField>
+
+<ParamField path="subResources" type="Resource[]">
+  Nested resources under this resource. Define using `defineResource()`.
+</ParamField>
+
+<ParamField path="guards" type="Guard[]">
+  Array of guard functions to control access. Guards are executed in order. If any guard returns non-pass result, access is denied.
+  
+  See [Route Guards](/api/guards/overview) for details.
+</ParamField>
+
+<ParamField path="errorBoundary" type="ReactNode">
+  Error boundary component for this resource and its sub-resources. Overrides module-level or global error boundaries.
+  
+  Use the `useRouteError` hook to access error details within the component.
+</ParamField>
+
+## Return Type
+
+<ResponseField name="Resource" type="Resource">
+  A resource object that can be used in a module's `resources` array or another resource's `subResources` array.
+</ResponseField>
+
+## Examples
+
+### Basic Resource
+
+```tsx
+import { defineResource } from "@tailor-platform/app-shell";
+
+const customPage = defineResource({
+  path: "custom-page",
+  component: () => {
+    return (
+      <div>
+        <p>This is a custom page.</p>
+      </div>
+    );
+  },
+});
+```
+
+### Resource with Metadata
+
+```tsx
+import { defineResource } from "@tailor-platform/app-shell";
+import { Package } from "lucide-react";
+
+const productList = defineResource({
+  path: "products",
+  meta: {
+    title: "Product List",
+    icon: <Package />,
+  },
+  component: ({ title }) => <ProductList title={title} />,
+});
+```
+
+### Resource with Dynamic Segments
+
+```tsx
+import { defineResource } from "@tailor-platform/app-shell";
+import { useParams } from "react-router";
+
+const productDetail = defineResource({
+  path: ":productSlug",
+  meta: { 
+    title: "Product Details",
+    breadcrumbTitle: (productSlug) => `Product ${productSlug}`
+  },
+  component: () => {
+    const { productSlug } = useParams();
+    return <ProductDetails productSlug={productSlug} />;
+  },
+});
+```
+
+### Nested Resources (Sub-resources)
+
+```tsx
+import { defineResource } from "@tailor-platform/app-shell";
+import { useParams } from "react-router";
+
+const productResource = defineResource({
+  path: "products",
+  meta: {
+    title: "Product List",
+    icon: <Package />,
+  },
+  component: ({ title }) => <ProductList title={title} />,
+  subResources: [
+    defineResource({
+      path: ":productSlug",
+      meta: { 
+        title: "Product Details",
+        breadcrumbTitle: (productSlug) => `Product ${productSlug}`
+      },
+      component: () => {
+        const { productSlug } = useParams();
+        return <ProductDetails productSlug={productSlug} />;
+      },
+      subResources: [
+        defineResource({
+          path: "edit",
+          meta: { title: "Edit Product" },
+          component: () => <ProductEditForm />
+        })
+      ]
+    })
+  ]
+});
+```
+
+### Resource with Guards
+
+```tsx
+import { defineResource, pass, hidden } from "@tailor-platform/app-shell";
+
+const adminSettings = defineResource({
+  path: "admin-settings",
+  component: AdminSettingsPage,
+  guards: [
+    async ({ context, signal }) => {
+      const user = await getCurrentUser({ signal });
+      return user.role === "admin" ? pass() : hidden();
+    }
+  ],
+});
+```
+
+### Resource with Error Boundary
+
+```tsx
+import { defineResource, useRouteError } from "@tailor-platform/app-shell";
+
+const CustomErrorBoundary = () => {
+  const error = useRouteError() as Error;
+  return (
+    <div>
+      <h1>Resource Error</h1>
+      <p>{error.message}</p>
+    </div>
+  );
+};
+
+const riskySalesResource = defineResource({
+  path: "risky-operation",
+  component: RiskyOperationPage,
+  errorBoundary: <CustomErrorBoundary />,
+});
+```
+
+### Resource with Internationalization
+
+```tsx
+import { defineResource, defineI18nLabels } from "@tailor-platform/app-shell";
+
+const labels = defineI18nLabels({
+  en: {
+    ordersTitle: "Orders",
+  },
+  ja: {
+    ordersTitle: "注文",
+  },
+});
+
+const ordersResource = defineResource({
+  path: "orders",
+  meta: {
+    title: labels.t("ordersTitle"),
+  },
+  component: OrdersPage,
+});
+```
+
+## Usage in Modules
+
+```tsx
+import { defineModule, defineResource } from "@tailor-platform/app-shell";
+
+const salesModule = defineModule({
+  path: "sales",
+  component: SalesLandingPage,
+  resources: [
+    defineResource({
+      path: "invoices",
+      component: InvoicesPage,
+    }),
+    defineResource({
+      path: "orders",
+      component: OrdersPage,
+      subResources: [
+        defineResource({
+          path: ":id",
+          component: OrderDetailPage,
+        }),
+      ],
+    }),
+  ],
+});
+```
+
+## Notes
+
+- The `component` prop is required for resources (unlike modules where it's optional)
+- Sub-resources do not appear in the sidebar navigation but are accessible via routing and appear in breadcrumbs
+- Dynamic path segments (`:paramName`) are accessible in the component using `useParams()` from `react-router`
+- Resources inherit the module's error boundary unless they define their own
+- Guards are executed before the component renders during the loader phase
+
+## Related
+
+- [defineModule](/api/define-module) - Define top-level modules
+- [Route Guards](/api/guards/overview) - Control access to resources
+- [defineI18nLabels](/api/define-i18n-labels) - Internationalization for titles

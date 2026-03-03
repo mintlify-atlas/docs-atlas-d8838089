@@ -1,0 +1,433 @@
+---
+title: Internationalization (i18n)
+description: Add multi-language support to your App Shell application
+---
+
+App Shell includes built-in internationalization support for creating multi-language applications. This guide shows you how to translate UI strings, module titles, and custom content.
+
+## How i18n Works in App Shell
+
+App Shell provides two levels of internationalization:
+
+1. **Built-in UI strings** - Navigation, command palette, error messages (English and Japanese included)
+2. **Your application strings** - Module titles, page content, custom labels (you define these)
+
+The locale is determined by:
+- Explicit `locale` prop on `AppShell` (if provided)
+- Browser language detection (if no prop provided)
+- Fallback to English if the detected language isn't supported
+
+## Quick Start
+
+### Setting the Locale
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const App = () => {
+  return (
+    <AppShell 
+      title="My App" 
+      modules={modules}
+      locale="ja"  // Force Japanese
+    >
+      <SidebarLayout />
+    </AppShell>
+  );
+};
+```
+
+**Supported locales for built-in UI:**
+- `en` - English (default)
+- `ja` - Japanese
+
+You can pass any locale string (e.g., `"fr"`, `"de"`), but built-in UI strings will fall back to English. Your custom labels defined with `defineI18nLabels` will work with any locale.
+
+## Defining Custom Labels
+
+Use `defineI18nLabels` to create type-safe translations for your application:
+
+<Steps>
+
+<Step title="Create a Labels File">
+
+Create `i18n-labels.ts` to define your translations:
+
+```typescript
+import { defineI18nLabels } from "@tailor-platform/app-shell";
+
+export const labels = defineI18nLabels({
+  en: {
+    // Static labels
+    dashboard: "Dashboard",
+    products: "Products",
+    settings: "Settings",
+    
+    // Dynamic labels with parameters
+    greeting: (args: { name: string }) => `Hello, ${args.name}!`,
+    itemCount: (args: { count: number }) => 
+      `${args.count} item${args.count !== 1 ? 's' : ''}`,
+  },
+  ja: {
+    dashboard: "ダッシュボード",
+    products: "製品",
+    settings: "設定",
+    
+    greeting: (args: { name: string }) => `こんにちは、${args.name}さん！`,
+    itemCount: (args: { count: number }) => `${args.count}個のアイテム`,
+  },
+});
+
+// Export the hook for components
+export const useT = labels.useT;
+```
+
+<Note>
+The `en` locale is required and serves as the fallback for any missing translations.
+</Note>
+
+</Step>
+
+<Step title="Use in Module Definitions">
+
+Use `labels.t()` for module and resource titles:
+
+```tsx
+import { defineModule, defineResource } from "@tailor-platform/app-shell";
+import { Package } from "lucide-react";
+import { labels } from "./i18n-labels";
+
+const productsModule = defineModule({
+  path: "products",
+  meta: {
+    title: labels.t("products"),  // Automatically translated
+    icon: <Package />,
+  },
+  component: ProductsPage,
+  resources: [
+    defineResource({
+      path: "all",
+      meta: {
+        title: labels.t("allProducts"),
+      },
+      component: AllProductsPage,
+    }),
+  ],
+});
+```
+
+</Step>
+
+<Step title="Use in Components">
+
+Use the `useT` hook to translate strings in your components:
+
+```tsx
+import { useT } from "./i18n-labels";
+
+const WelcomeMessage = ({ userName }: { userName: string }) => {
+  const t = useT();
+  
+  return (
+    <div>
+      <h1>{t("dashboard")}</h1>
+      <p>{t("greeting", { name: userName })}</p>
+      <p>{t("itemCount", { count: 5 })}</p>
+    </div>
+  );
+};
+```
+
+</Step>
+
+</Steps>
+
+## Dynamic Label Keys
+
+For runtime-determined label keys (like status badges), use `t.dynamic()`:
+
+```tsx
+import { useT } from "./i18n-labels";
+
+// Define labels with prefixes
+export const labels = defineI18nLabels({
+  en: {
+    "status.PENDING": "Pending",
+    "status.CONFIRMED": "Confirmed",
+    "status.SHIPPED": "Shipped",
+    "status.DELIVERED": "Delivered",
+  },
+  ja: {
+    "status.PENDING": "保留中",
+    "status.CONFIRMED": "確認済み",
+    "status.SHIPPED": "発送済み",
+    "status.DELIVERED": "配達済み",
+  },
+});
+
+// Use in component
+const OrderStatus = ({ status }: { status: string }) => {
+  const t = useT();
+  
+  return (
+    <Badge>
+      {t.dynamic(`status.${status}`, status)}
+    </Badge>
+  );
+};
+```
+
+The second argument to `t.dynamic()` is the fallback text if the key doesn't exist.
+
+## Switching Locales at Runtime
+
+Allow users to change the language:
+
+```tsx
+import { useState } from "react";
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const App = () => {
+  const [locale, setLocale] = useState<"en" | "ja">("en");
+
+  return (
+    <>
+      {/* Language selector */}
+      <div style={{ padding: "1rem" }}>
+        <select 
+          value={locale} 
+          onChange={(e) => setLocale(e.target.value as "en" | "ja")}
+        >
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
+
+      {/* App Shell with dynamic locale */}
+      <AppShell 
+        title="My App" 
+        modules={modules}
+        locale={locale}
+      >
+        <SidebarLayout />
+      </AppShell>
+    </>
+  );
+};
+```
+
+## Real-World Example
+
+Here's a complete example from the App Shell source code:
+
+```typescript
+// i18n-labels.ts
+import { defineI18nLabels } from "@tailor-platform/app-shell";
+
+export const labels = defineI18nLabels({
+  en: {
+    customPageTitle: "Custom Page",
+    dynamicPageTitle: "Dynamic Page",
+    dynamicPageDescription: (args: { id: string }) =>
+      `This is a dynamic page with ID: ${args.id}`,
+    subPageTitle: "Sub Page",
+    subPageDescription: "This is a sub page",
+  },
+  ja: {
+    customPageTitle: "カスタムページ",
+    dynamicPageTitle: "動的ページ",
+    dynamicPageDescription: (args: { id: string }) =>
+      `これはID: ${args.id}の動的ページです`,
+    subPageTitle: "サブページ",
+    subPageDescription: "これはサブページです",
+  },
+});
+
+export const useT = labels.useT;
+```
+
+```tsx
+// module.tsx
+import { defineModule, defineResource, useParams } from "@tailor-platform/app-shell";
+import { labels, useT } from "./i18n-labels";
+
+const dynamicPageResource = defineResource({
+  path: ":id",
+  meta: {
+    title: labels.t("dynamicPageTitle"),  // Used in navigation
+  },
+  component: () => {
+    const params = useParams<{ id: string }>();
+    const t = useT();  // Used in component
+
+    return (
+      <div>
+        <h1>{t("dynamicPageTitle")}</h1>
+        <p>{t("dynamicPageDescription", { id: params.id! })}</p>
+      </div>
+    );
+  },
+});
+```
+
+## Built-in UI Translations
+
+App Shell includes these built-in translations:
+
+| Key | English | Japanese |
+|-----|---------|----------|
+| `error404Title` | 404 Not Found | 404 ページが見つかりません |
+| `error404Body` | The page you requested could not be found. | お探しのページは存在しません。 |
+| `goBack` | Go Back | 戻る |
+| `settings` | Settings | 設定 |
+| `toggleSidebar` | Toggle Sidebar | サイドバーを切り替え |
+| `commandPaletteSearch` | Search pages... | ページを検索... |
+| `commandPaletteNoResults` | No results found | 結果が見つかりません |
+
+These translate automatically based on the `locale` prop.
+
+## Advanced Patterns
+
+### Pluralization
+
+Handle singular and plural forms:
+
+```typescript
+export const labels = defineI18nLabels({
+  en: {
+    items: (args: { count: number }) => {
+      if (args.count === 0) return "No items";
+      if (args.count === 1) return "1 item";
+      return `${args.count} items`;
+    },
+  },
+  ja: {
+    items: (args: { count: number }) => {
+      if (args.count === 0) return "アイテムなし";
+      return `${args.count}個のアイテム`;
+    },
+  },
+});
+```
+
+### Nested Translations
+
+Organize labels with dot notation:
+
+```typescript
+export const labels = defineI18nLabels({
+  en: {
+    "nav.dashboard": "Dashboard",
+    "nav.products": "Products",
+    "nav.settings": "Settings",
+    "form.save": "Save",
+    "form.cancel": "Cancel",
+    "form.required": "This field is required",
+  },
+  ja: {
+    "nav.dashboard": "ダッシュボード",
+    "nav.products": "製品",
+    "nav.settings": "設定",
+    "form.save": "保存",
+    "form.cancel": "キャンセル",
+    "form.required": "この項目は必須です",
+  },
+});
+
+// Usage
+const t = useT();
+t("nav.dashboard");
+t("form.required");
+```
+
+### Date and Number Formatting
+
+Use browser APIs for locale-aware formatting:
+
+```tsx
+import { useAppShellConfig } from "@tailor-platform/app-shell";
+
+const FormattedDate = ({ date }: { date: Date }) => {
+  const { configurations } = useAppShellConfig();
+  const locale = configurations.locale;
+  
+  return (
+    <time>
+      {new Intl.DateTimeFormat(locale, { 
+        dateStyle: "medium" 
+      }).format(date)}
+    </time>
+  );
+};
+
+const FormattedCurrency = ({ amount }: { amount: number }) => {
+  const { configurations } = useAppShellConfig();
+  const locale = configurations.locale;
+  
+  return (
+    <span>
+      {new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: "USD",
+      }).format(amount)}
+    </span>
+  );
+};
+```
+
+## Best Practices
+
+### Organization
+
+- Keep all labels in a single `i18n-labels.ts` file
+- Use consistent naming: `"module.resource.label"`
+- Group related labels together
+- Document complex pluralization rules
+
+### Translation Quality
+
+- Work with native speakers for accurate translations
+- Keep strings short and context-independent
+- Avoid hard-coded punctuation (it varies by language)
+- Test with real content, not placeholder text
+
+### Type Safety
+
+```typescript
+// Good: Type-safe dynamic labels
+type EmployeeType = "STAFF" | "MANAGER" | "CONTRACTOR";
+
+const labels = defineI18nLabels({
+  en: {
+    "employees.STAFF": "Staff",
+    "employees.MANAGER": "Manager",
+    "employees.CONTRACTOR": "Contractor",
+  },
+  ja: { /* ... */ },
+});
+
+const EmployeeTypeLabel = ({ type }: { type: EmployeeType }) => {
+  const t = useT();
+  return <span>{t.dynamic(`employees.${type}`, type)}</span>;
+};
+```
+
+### Performance
+
+- Labels are loaded once and cached
+- No runtime overhead for static strings
+- Dynamic functions are memoized per locale
+
+## Limitations
+
+- Built-in UI strings only support English and Japanese
+- No automatic RTL (right-to-left) layout support
+- Date/time formatting requires manual integration with `Intl` APIs
+
+For advanced i18n needs (ICU message format, context-aware translations), consider integrating a library like [react-intl](https://formatjs.io/docs/react-intl/) or [i18next](https://www.i18next.com/).
+
+## Related Resources
+
+- [API Reference: defineI18nLabels](/api-reference/definei18nlabels)
+- [API Reference: AppShell locale prop](/api-reference/appshell#props)
+- [Building Your First App](/guides/building-your-first-app)

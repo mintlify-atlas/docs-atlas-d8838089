@@ -1,0 +1,373 @@
+---
+title: SidebarLayout
+description: Default layout component providing sidebar navigation and header
+---
+
+## Overview
+
+The `SidebarLayout` component is the default layout for Tailor Platform applications. It provides:
+
+- Collapsible sidebar navigation
+- Responsive mobile menu
+- Dynamic breadcrumb navigation
+- Theme toggle button
+- Content outlet for page rendering
+
+This component should be used as a direct child of `AppShell`.
+
+## Props
+
+<ParamField path="children" type="(props: { Outlet: () => React.ReactNode }) => React.ReactNode">
+  Custom content renderer that receives an `Outlet` component for rendering page content.
+  
+  ```tsx
+  <SidebarLayout>
+    {({ Outlet }) => (
+      <>
+        <CustomHeader />
+        <Outlet />
+        <CustomFooter />
+      </>
+    )}
+  </SidebarLayout>
+  ```
+</ParamField>
+
+<ParamField path="sidebar" type="React.ReactNode">
+  Custom sidebar component. Defaults to `DefaultSidebar`.
+  
+  ```tsx
+  <SidebarLayout sidebar={<MyCustomSidebar />} />
+  ```
+</ParamField>
+
+## Features
+
+### Responsive Behavior
+
+- **Desktop**: Sidebar is visible and collapsible
+- **Mobile**: Sidebar slides in as an overlay (offcanvas)
+- **Icon Mode**: Sidebar collapses to icon-only mode on narrow screens
+
+### Built-in Header
+
+The header includes:
+- Sidebar toggle button (hidden when sidebar is open on desktop)
+- Dynamic breadcrumb navigation
+- Theme toggle button (light/dark mode)
+
+### Content Area
+
+The content area automatically renders:
+- Page components from your route configuration
+- Custom content via the `children` render prop
+
+## Usage Examples
+
+### Basic Usage
+
+Simplest setup with all defaults:
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const App = () => (
+  <AppShell title="My App">
+    <SidebarLayout />
+  </AppShell>
+);
+```
+
+### Custom Content Wrapper
+
+Wrap page content with custom elements:
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const App = () => (
+  <AppShell title="My App">
+    <SidebarLayout>
+      {({ Outlet }) => (
+        <div className="custom-wrapper">
+          <div className="page-header">
+            <h1>Custom Header</h1>
+          </div>
+          <main className="page-content">
+            <Outlet />
+          </main>
+          <footer className="page-footer">
+            <p>© 2024 My Company</p>
+          </footer>
+        </div>
+      )}
+    </SidebarLayout>
+  </AppShell>
+);
+```
+
+### Custom Sidebar
+
+Replace the default sidebar with your own:
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+import { MySidebar } from "./components/MySidebar";
+
+const App = () => (
+  <AppShell title="My App">
+    <SidebarLayout sidebar={<MySidebar />} />
+  </AppShell>
+);
+```
+
+### Using DefaultSidebar with Custom Header/Footer
+
+```tsx
+import { 
+  AppShell, 
+  SidebarLayout, 
+  DefaultSidebar 
+} from "@tailor-platform/app-shell";
+
+const SidebarHeader = () => (
+  <div className="p-4">
+    <img src="/logo.svg" alt="Logo" />
+    <h1>My App</h1>
+  </div>
+);
+
+const SidebarFooter = () => (
+  <div className="p-4 border-t">
+    <p className="text-sm">Version 1.0.0</p>
+  </div>
+);
+
+const App = () => (
+  <AppShell title="My App">
+    <SidebarLayout 
+      sidebar={
+        <DefaultSidebar 
+          header={<SidebarHeader />}
+          footer={<SidebarFooter />}
+        />
+      }
+    />
+  </AppShell>
+);
+```
+
+### With Multiple Layout Sections
+
+```tsx
+import { AppShell, SidebarLayout } from "@tailor-platform/app-shell";
+
+const App = () => (
+  <AppShell title="My App">
+    <SidebarLayout>
+      {({ Outlet }) => (
+        <div className="layout-container">
+          <aside className="left-panel">
+            <QuickActions />
+          </aside>
+          <main className="main-content">
+            <Outlet />
+          </main>
+          <aside className="right-panel">
+            <Notifications />
+          </aside>
+        </div>
+      )}
+    </SidebarLayout>
+  </AppShell>
+);
+```
+
+## DefaultSidebar
+
+The `DefaultSidebar` component provides auto-generated navigation from your module configuration.
+
+### Props
+
+<ParamField path="header" type="React.ReactNode">
+  Custom header content displayed at the top of the sidebar
+</ParamField>
+
+<ParamField path="footer" type="React.ReactNode">
+  Custom footer content displayed at the bottom of the sidebar
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode">
+  When provided, enables explicit sidebar composition using `SidebarItem`, `SidebarGroup`, and other components. Auto-generation is completely disabled when children is specified.
+</ParamField>
+
+### Auto-generation Mode
+
+By default, `DefaultSidebar` automatically generates navigation items based on your module/resource definitions:
+
+```tsx
+import { DefaultSidebar } from "@tailor-platform/app-shell";
+
+// Automatically generates nav items from modules
+<DefaultSidebar />
+```
+
+### Composition Mode
+
+Manually define sidebar structure using components:
+
+```tsx
+import { 
+  DefaultSidebar,
+  SidebarItem,
+  SidebarGroup,
+  SidebarSeparator
+} from "@tailor-platform/app-shell";
+
+<DefaultSidebar>
+  <SidebarItem to="/dashboard" />
+  <SidebarGroup title="Products">
+    <SidebarItem to="/products/all" />
+    <SidebarItem to="/products/categories" />
+  </SidebarGroup>
+  <SidebarSeparator />
+  <SidebarItem to="/settings" />
+</DefaultSidebar>
+```
+
+## Sidebar Components
+
+When using composition mode, you can use these components:
+
+### SidebarItem
+
+Renders a navigation link with automatic active state and icon/title from page metadata.
+
+```tsx
+<SidebarItem to="/dashboard" />
+```
+
+### SidebarGroup
+
+Groups related navigation items together:
+
+```tsx
+<SidebarGroup title="Products">
+  <SidebarItem to="/products/all" />
+  <SidebarItem to="/products/new" />
+</SidebarGroup>
+```
+
+### SidebarSeparator
+
+Adds a visual divider between sidebar sections:
+
+```tsx
+<SidebarItem to="/dashboard" />
+<SidebarSeparator />
+<SidebarItem to="/settings" />
+```
+
+## Customization
+
+### Theme Toggle
+
+The theme toggle button is built-in and uses the `useTheme` hook:
+
+```tsx
+import { useTheme } from "@tailor-platform/app-shell";
+
+const CustomThemeToggle = () => {
+  const { theme, setTheme } = useTheme();
+  
+  return (
+    <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+      Toggle Theme
+    </button>
+  );
+};
+```
+
+### Breadcrumb Navigation
+
+The breadcrumb is dynamically generated from your current route. Customize breadcrumb titles using `meta.breadcrumbTitle` in your module/resource definitions:
+
+```tsx
+import { defineResource } from "@tailor-platform/app-shell";
+
+defineResource({
+  path: ":productId",
+  meta: {
+    title: "Product Details",
+    breadcrumbTitle: (productId) => `Product ${productId}`
+  },
+  component: ProductDetails
+});
+```
+
+### Sidebar State
+
+Access sidebar state in custom components:
+
+```tsx
+import { useSidebar } from "@tailor-platform/app-shell";
+
+const CustomComponent = () => {
+  const { open, isIconMode } = useSidebar();
+  
+  return (
+    <div>
+      Sidebar is {open ? 'open' : 'closed'}
+      {isIconMode && <span>(Icon mode)</span>}
+    </div>
+  );
+};
+```
+
+## TypeScript
+
+### SidebarLayoutProps Type
+
+```typescript
+type SidebarLayoutProps = {
+  children?: (props: { Outlet: () => React.ReactNode }) => React.ReactNode;
+  sidebar?: React.ReactNode;
+};
+```
+
+### DefaultSidebarProps Type
+
+```typescript
+type DefaultSidebarProps = {
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
+};
+```
+
+## Styling
+
+The sidebar uses Tailwind CSS with the `astw:` prefix. Customize the appearance by:
+
+1. **Override CSS variables** in your theme
+2. **Apply custom classes** to wrapper components
+3. **Use the `className` prop** on custom sidebar components
+
+```css
+/* Custom sidebar styling */
+:root {
+  --sidebar-width: 280px;
+  --sidebar-background: hsl(0 0% 98%);
+}
+
+.dark {
+  --sidebar-background: hsl(0 0% 10%);
+}
+```
+
+## See Also
+
+- [AppShell](/components/app-shell) - Root component configuration
+- [CommandPalette](/components/command-palette) - Quick navigation
+- [SidebarItem](/components/sidebar-item) - Navigation items for the sidebar
+- [SidebarGroup](/components/sidebar-group) - Collapsible groups for organizing sidebar

@@ -1,0 +1,322 @@
+---
+title: Styling and theming
+description: Customize your application's appearance using Tailwind CSS v4 and AppShell's theme system
+---
+
+AppShell uses Tailwind CSS v4 for styling and provides a curated theme with Tailor Platform's color palette and design tokens. All AppShell components are styled with Tailwind utility classes.
+
+## Quick start
+
+Include AppShell's theme in your global CSS file:
+
+```css
+/* src/global.css or src/index.css */
+@import "@tailor-platform/app-shell/theme.css";
+@import "tailwindcss";
+```
+
+<Warning>
+The import order matters! Import AppShell's theme **before** Tailwind to ensure proper CSS variable definitions.
+</Warning>
+
+## Theme colors
+
+After including the theme, AppShell's custom colors are available as Tailwind utility classes:
+
+```tsx
+const MyComponent = () => {
+  return (
+    <div className="bg-muted text-muted-foreground">
+      <h1 className="text-primary">Welcome</h1>
+      <p className="text-foreground">Content goes here</p>
+      <button className="bg-destructive text-destructive-foreground">
+        Delete
+      </button>
+    </div>
+  );
+};
+```
+
+## Available color tokens
+
+AppShell's theme provides semantic color tokens that adapt to light and dark modes:
+
+### Background and foreground
+
+| Token | Purpose | Light Mode | Dark Mode |
+|-------|---------|------------|----------|
+| `background` | Page background | Light gray | Dark gray |
+| `foreground` | Primary text | Dark gray | Light gray |
+
+### Interactive elements
+
+| Token | Purpose |
+|-------|---------|
+| `primary` | Primary actions and emphasis |
+| `primary-foreground` | Text on primary background |
+| `secondary` | Secondary actions |
+| `secondary-foreground` | Text on secondary background |
+| `accent` | Highlighted elements |
+| `accent-foreground` | Text on accent background |
+
+### Muted and subtle
+
+| Token | Purpose |
+|-------|---------|
+| `muted` | Subtle backgrounds |
+| `muted-foreground` | De-emphasized text |
+
+### Status and feedback
+
+| Token | Purpose |
+|-------|---------|
+| `destructive` | Dangerous actions (delete, remove) |
+| `destructive-foreground` | Text on destructive background |
+
+### Surfaces
+
+| Token | Purpose |
+|-------|---------|
+| `card` | Card backgrounds |
+| `card-foreground` | Text on cards |
+| `popover` | Popover backgrounds |
+| `popover-foreground` | Text on popovers |
+
+### Borders and inputs
+
+| Token | Purpose |
+|-------|---------|
+| `border` | Border color |
+| `input` | Input field borders |
+| `ring` | Focus ring color |
+
+### Sidebar
+
+| Token | Purpose |
+|-------|---------|
+| `sidebar` | Sidebar background |
+| `sidebar-foreground` | Sidebar text |
+| `sidebar-primary` | Active sidebar items |
+| `sidebar-primary-foreground` | Text on active items |
+| `sidebar-accent` | Hover state |
+| `sidebar-accent-foreground` | Text on hover |
+| `sidebar-border` | Sidebar borders |
+
+### Status colors
+
+For status indicators and badges:
+
+```css
+--color-status-default: #737373;
+--color-status-neutral: #0ea5e9;
+--color-status-completed: #22c55e;
+--color-status-attention: #f59e0b;
+--color-status-danger: #ef4444;
+```
+
+## Dark mode
+
+AppShell includes built-in dark mode support. Toggle between themes using the `useTheme` hook:
+
+```tsx
+import { useTheme } from "@tailor-platform/app-shell";
+
+const ThemeToggle = () => {
+  const { theme, setTheme } = useTheme();
+  
+  return (
+    <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+      {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+    </button>
+  );
+};
+```
+
+### Available themes
+
+- `"light"` - Light theme
+- `"dark"` - Dark theme
+- `"system"` - Follow system preference (default)
+
+## Custom styling
+
+### Extending the theme
+
+You can extend AppShell's theme with your own colors:
+
+```css
+/* src/global.css */
+@import "@tailor-platform/app-shell/theme.css";
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #3b82f6;
+  --color-brand-foreground: #ffffff;
+}
+```
+
+Use in components:
+
+```tsx
+<button className="bg-brand text-brand-foreground">
+  Brand Action
+</button>
+```
+
+### Override default colors
+
+To customize AppShell's default colors, override the CSS variables:
+
+```css
+@import "@tailor-platform/app-shell/theme.css";
+
+:root {
+  --primary: rgba(59, 130, 246, 1); /* Custom blue */
+  --primary-foreground: rgba(255, 255, 255, 1);
+}
+
+.dark {
+  --primary: rgba(96, 165, 250, 1); /* Lighter blue for dark mode */
+  --primary-foreground: rgba(23, 23, 23, 1);
+}
+
+@import "tailwindcss";
+```
+
+## AppShell component styling
+
+### Class prefix
+
+AppShell components use a `astw:` prefix (AppShell TailWind) to avoid class name conflicts:
+
+```tsx
+// AppShell internal component
+<div className="astw:flex astw:items-center astw:gap-4">
+  {/* Content */}
+</div>
+```
+
+<Info>
+You don't need to use the `astw:` prefix in your own components—it's only for AppShell's internal components.
+</Info>
+
+### Why the prefix?
+
+Tailwind generates separate stylesheets for AppShell components and your application. The prefix prevents style definition order conflicts between these two stylesheets.
+
+### Styling AppShell components
+
+Many AppShell components accept a `className` prop for customization:
+
+```tsx
+import { SidebarLayout } from "@tailor-platform/app-shell";
+
+<SidebarLayout 
+  className="bg-background border-r border-border"
+  sidebar={<MySidebar />}
+/>
+```
+
+## Typography
+
+AppShell doesn't enforce specific typography styles. Use Tailwind's typography utilities:
+
+```tsx
+<div>
+  <h1 className="text-4xl font-bold text-foreground">Page Title</h1>
+  <p className="text-base text-muted-foreground">Subtitle text</p>
+</div>
+```
+
+## Responsive design
+
+Use Tailwind's responsive utilities with AppShell:
+
+```tsx
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {/* Responsive grid */}
+</div>
+```
+
+## Radius tokens
+
+AppShell provides border radius tokens:
+
+```css
+--radius-sm: calc(var(--radius) - 4px);  /* Small radius */
+--radius-md: calc(var(--radius) - 2px);  /* Medium radius */
+--radius-lg: var(--radius);               /* Large radius (default: 0.625rem) */
+--radius-xl: calc(var(--radius) + 4px);  /* Extra large radius */
+```
+
+Use in Tailwind:
+
+```tsx
+<div className="rounded-lg"> {/* Uses --radius-lg */}
+  <div className="rounded-md"> {/* Uses --radius-md */}
+    Content
+  </div>
+</div>
+```
+
+## Example: Custom component
+
+Combining AppShell's theme tokens:
+
+```tsx
+const StatusCard = ({ status, children }: { status: string; children: React.ReactNode }) => {
+  const statusColors = {
+    success: "bg-status-completed text-white",
+    warning: "bg-status-attention text-white",
+    error: "bg-status-danger text-white",
+    info: "bg-status-neutral text-white",
+  };
+  
+  return (
+    <div className={`rounded-lg p-4 ${statusColors[status]}`}>
+      {children}
+    </div>
+  );
+};
+```
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Use semantic tokens" icon="palette">
+    Prefer `text-foreground` over `text-gray-900` for theme consistency
+  </Card>
+  <Card title="Respect dark mode" icon="moon">
+    Test components in both light and dark themes
+  </Card>
+  <Card title="Leverage Tailwind" icon="wind">
+    Use Tailwind utilities instead of custom CSS when possible
+  </Card>
+  <Card title="Extend thoughtfully" icon="plus">
+    Add custom colors only when semantic tokens don't fit
+  </Card>
+</CardGroup>
+
+## Omitting the theme
+
+If you omit `@import "@tailor-platform/app-shell/theme.css"`, most of the UI will still work, but you'll lose:
+
+- Tailor Platform's curated color palette
+- Sidebar-specific color tokens
+- Status color tokens
+- Consistent dark mode colors
+
+<Warning>
+While optional, including the theme is strongly recommended for a cohesive design experience.
+</Warning>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Tailwind CSS" icon="link" href="https://tailwindcss.com/docs">
+    Official Tailwind CSS documentation
+  </Card>
+  <Card title="Components" icon="layer-group" href="/components/sidebar-layout">
+    Explore AppShell's pre-built components
+  </Card>
+</CardGroup>

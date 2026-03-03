@@ -1,0 +1,403 @@
+---
+title: File-based routing
+description: Define routes using directory structure instead of explicit module and resource definitions
+---
+
+File-based routing allows you to define pages by placing components in a directory structure, eliminating the need for explicit `defineModule()` and `defineResource()` calls. This approach is similar to Next.js's App Router.
+
+## Overview
+
+Instead of manually assembling module/resource hierarchies, you define pages as files in a `pages/` directory. The route path is automatically derived from the directory structure.
+
+```
+src/pages/
+├── page.tsx                  # / (root path)
+├── purchasing/
+│   ├── page.tsx              # /purchasing
+│   └── orders/
+│       ├── page.tsx          # /purchasing/orders
+│       └── [id]/
+│           └── page.tsx      # /purchasing/orders/:id
+└── (admin)/                  # Grouping (not included in path)
+    └── settings/
+        └── page.tsx          # /settings
+```
+
+## Setup
+
+<Steps>
+  <Step title="Configure Vite plugin">
+    Add the `appShellRoutes` plugin to your Vite config:
+
+    ```typescript
+    // vite.config.ts
+    import { defineConfig } from 'vite';
+    import react from '@vitejs/plugin-react';
+    import { appShellRoutes } from '@tailor-platform/app-shell-vite-plugin';
+
+    export default defineConfig({
+      plugins: [
+        react(),
+        appShellRoutes(), // Scans src/pages by default
+      ],
+    });
+    ```
+  </Step>
+
+  <Step title="Create pages directory">
+    Create a `src/pages/` directory in your project.
+  </Step>
+
+  <Step title="Use AppShell without modules prop">
+    No configuration needed—pages are automatically discovered:
+
+    ```tsx
+    // App.tsx
+    import { AppShell, SidebarLayout, DefaultSidebar } from '@tailor-platform/app-shell';
+
+    const App = () => {
+      return (
+        <AppShell title="My App">
+          <SidebarLayout sidebar={<DefaultSidebar />} />
+        </AppShell>
+      );
+    };
+    ```
+  </Step>
+</Steps>
+
+<Info>
+Pages are automatically discovered and injected—no `modules` prop required!
+</Info>
+
+## Page components
+
+### Minimal example
+
+The simplest page is just a default-exported component:
+
+```tsx
+// src/pages/about/page.tsx
+export default () => <div>About</div>;
+```
+
+### Full example
+
+Use the `appShellPageProps` static field to configure metadata and guards:
+
+```tsx
+// src/pages/dashboard/page.tsx
+import type { AppShellPageProps } from '@tailor-platform/app-shell';
+import { authGuard } from '../guards';
+import { DashboardIcon } from '../icons';
+
+const DashboardPage = () => {
+  return <div>Dashboard Content</div>;
+};
+
+DashboardPage.appShellPageProps = {
+  meta: { 
+    title: "Dashboard", 
+    icon: <DashboardIcon />,
+  },
+  guards: [authGuard],
+} satisfies AppShellPageProps;
+
+export default DashboardPage;
+```
+
+### AppShellPageProps type
+
+```typescript
+type AppShellPageProps = {
+  meta?: { 
+    title: LocalizedString; 
+    icon?: ReactNode 
+  };
+  guards?: Guard[];
+};
+```
+
+## Path conventions
+
+| Directory Name | Converts To | Description |
+|----------------|-------------|-------------|
+| `orders` | `orders` | Static segment |
+| `[id]` | `:id` | Dynamic parameter |
+| `(group)` | (excluded) | Grouping only (not in path) |
+| `_lib` | (ignored) | Not routed (for shared logic) |
+
+### Examples
+
+```
+src/pages/
+├── users/
+│   ├── page.tsx              # /users
+│   └── [userId]/
+│       └── page.tsx          # /users/:userId
+├── (marketing)/
+│   ├── campaigns/
+│   │   └── page.tsx          # /campaigns (not /marketing/campaigns)
+│   └── analytics/
+│       └── page.tsx          # /analytics
+└── _utils/
+    └── helpers.ts            # Not routed (shared utilities)
+```
+
+<Note>
+Use `(parentheses)` for route grouping without affecting the URL path. Use `_underscore` for shared code that shouldn't be routed.
+</Note>
+
+## Dynamic parameters
+
+Use square brackets for dynamic route segments:
+
+```tsx
+// src/pages/orders/[id]/page.tsx
+import { useParams } from '@tailor-platform/app-shell';
+
+const OrderDetailPage = () => {
+  const { id } = useParams();
+  return <div>Order ID: {id}</div>;
+};
+
+export default OrderDetailPage;
+```
+
+### Multiple parameters
+
+```
+src/pages/orders/[orderId]/items/[itemId]/page.tsx
+```
+
+Converts to route: `/orders/:orderId/items/:itemId`
+
+## Route guards
+
+Guards are **not** automatically inherited from parent pages. Each page must explicitly define its own guards:
+
+```tsx
+// src/pages/dashboard/page.tsx
+DashboardPage.appShellPageProps = {
+  guards: [authGuard],
+} satisfies AppShellPageProps;
+
+// src/pages/dashboard/admin/page.tsx
+// Must include authGuard explicitly—not inherited
+AdminPage.appShellPageProps = {
+  guards: [authGuard, adminGuard],
+} satisfies AppShellPageProps;
+```
+
+### Reusable guards
+
+To share common guards across pages, compose them from a shared module:
+
+```tsx
+// src/guards.ts
+import { type Guard, pass, hidden, redirectTo } from "@tailor-platform/app-shell";
+
+export const requireAuth: Guard = ({ context }) => {
+  if (!context.currentUser) {
+    return redirectTo("/login");
+  }
+  return pass();
+};
+
+export const requireAdmin: Guard = ({ context }) => {
+  if (context.currentUser?.role !== "admin") {
+    return hidden();
+  }
+  return pass();
+};
+
+// Composed guard arrays
+export const protectedRoute = [requireAuth];
+export const adminRoute = [requireAuth, requireAdmin];
+```
+
+Use in pages:
+
+```tsx
+// src/pages/dashboard/orders/page.tsx
+import { protectedRoute } from '@/guards';
+
+OrdersPage.appShellPageProps = {
+  guards: protectedRoute,
+} satisfies AppShellPageProps;
+```
+
+## Typed routes
+
+Enable `generateTypedRoutes` to generate type-safe route helpers:
+
+```typescript
+// vite.config.ts
+appShellRoutes({
+  generateTypedRoutes: true,
+})
+```
+
+This generates `src/routes.generated.ts` with a `paths` helper:
+
+```tsx
+import { paths } from './routes.generated';
+import { Link } from '@tailor-platform/app-shell';
+
+// Static routes
+<Link to={paths.for("/dashboard")}>Dashboard</Link>
+
+// Dynamic routes - params are type-checked
+<Link to={paths.for("/orders/:id", { id: orderId })}>Order</Link>
+
+// TypeScript catches errors:
+paths.for("/orders/:id"); // ❌ Error: missing 'id'
+paths.for("/invalid");     // ❌ Error: route doesn't exist
+```
+
+<Card title="Type-safe navigation" icon="shield-check" href="/api/create-typed-paths">
+  Learn more about typed routes
+</Card>
+
+## Comparison with legacy API
+
+### Before: Explicit hierarchy
+
+```tsx
+const orderDetailResource = defineResource({ 
+  path: ":id", 
+  component: OrderDetail 
+});
+
+const ordersResource = defineResource({ 
+  path: "orders", 
+  component: OrdersList,
+  subResources: [orderDetailResource],
+});
+
+const purchasingModule = defineModule({ 
+  path: "purchasing", 
+  component: PurchasingPage,
+  resources: [ordersResource],
+});
+
+<AppShell modules={[purchasingModule]} />
+```
+
+### After: File-based pages
+
+```tsx
+// src/pages/purchasing/orders/[id]/page.tsx
+const OrderDetailPage = () => <div>Order Detail</div>;
+
+OrderDetailPage.appShellPageProps = {
+  meta: { title: "Order Detail" },
+} satisfies AppShellPageProps;
+
+export default OrderDetailPage;
+```
+
+```tsx
+// App.tsx - No configuration needed
+<AppShell title="My App">
+  <SidebarLayout sidebar={<DefaultSidebar />} />
+</AppShell>
+```
+
+### Concept mapping
+
+| Legacy API | File-Based | Notes |
+|------------|------------|-------|
+| `Module` | First-level directory | Top-level folder in `pages/` |
+| `Resource` | Directory with `page.tsx` | Nested folders |
+| `defineModule()` | Not needed | Automatic |
+| `defineResource()` | Not needed | Automatic |
+| `path` property | Directory name | Auto-derived |
+| `component` property | `page.tsx` default export | File convention |
+| `meta` property | `Page.appShellPageProps.meta` | Static field |
+| `guards` property | `Page.appShellPageProps.guards` | Static field (no inheritance) |
+| `subResources` | Subdirectories | Auto-derived |
+
+## Compatibility
+
+File-based pages and explicit `modules` prop are **mutually exclusive**.
+
+### Valid patterns
+
+<CodeGroup>
+```tsx Pattern 1: File-based (recommended)
+// vite.config.ts has appShellRoutes() plugin
+<AppShell title="My App">
+  <SidebarLayout sidebar={<DefaultSidebar />} />
+</AppShell>
+```
+
+```tsx Pattern 2: Explicit modules (legacy)
+<AppShell modules={[myModule]} title="My App">
+  <SidebarLayout sidebar={<DefaultSidebar />} />
+</AppShell>
+```
+
+```tsx Pattern 3: Plugin enabled + modules prop
+// Even with plugin enabled, modules prop takes precedence
+<AppShell modules={[myModule]} title="My App">
+  <SidebarLayout sidebar={<DefaultSidebar />} />
+</AppShell>
+```
+</CodeGroup>
+
+<Warning>
+No plugin + no modules = runtime error: "No routes configured"
+</Warning>
+
+## Migration guide
+
+To migrate from `defineModule`/`defineResource` to file-based routing:
+
+<Steps>
+  <Step title="Add Vite plugin">
+    ```typescript
+    // vite.config.ts
+    import { appShellRoutes } from '@tailor-platform/app-shell-vite-plugin';
+    
+    export default defineConfig({
+      plugins: [
+        react(),
+        appShellRoutes(),
+      ],
+    });
+    ```
+  </Step>
+
+  <Step title="Create pages directory structure">
+    - Map each module to a top-level directory
+    - Map each resource to a subdirectory with `page.tsx`
+    - Use `[param]` for dynamic segments
+  </Step>
+
+  <Step title="Move component and metadata">
+    ```tsx
+    // Before: defineResource({ path: "orders", component: Orders, meta: {...} })
+    
+    // After: src/pages/orders/page.tsx
+    const OrdersPage = () => <Orders />;
+    OrdersPage.appShellPageProps = { meta: {...} };
+    export default OrdersPage;
+    ```
+  </Step>
+
+  <Step title="Remove modules prop">
+    Once all pages are migrated, remove the `modules` prop from `<AppShell>`
+  </Step>
+</Steps>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Routing and navigation" icon="route" href="/concepts/routing-navigation">
+    Learn about client-side navigation and typed routes
+  </Card>
+  <Card title="Modules and resources" icon="sitemap" href="/concepts/modules-and-resources">
+    Understand the legacy explicit configuration approach
+  </Card>
+</CardGroup>
